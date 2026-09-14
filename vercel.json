@@ -8,19 +8,16 @@
       "includeFiles": [
         "DATABASE.xlsx",
         "access-password.txt",
+        "netlify/functions/api.js",
         "survey-*.json"
       ]
     }
   },
   "rewrites": [
-    { "source": "/api/login", "destination": "/api/handler?route=login" },
-    { "source": "/api/database", "destination": "/api/handler?route=database" },
-    { "source": "/api/save", "destination": "/api/handler?route=save" },
-    { "source": "/api/dashboard", "destination": "/api/handler?route=dashboard" },
-    { "source": "/login", "destination": "/api/handler?route=login" },
-    { "source": "/database", "destination": "/api/handler?route=database" },
-    { "source": "/save", "destination": "/api/handler?route=save" },
+    { "source": "/login", "destination": "/api/login" },
+    { "source": "/database", "destination": "/api/database" },
+    { "source": "/save", "destination": "/api/save" },
     { "source": "/dashboard", "destination": "/index.html" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    { "source": "/:path*", "destination": "/index.html" }
   ]
 }
