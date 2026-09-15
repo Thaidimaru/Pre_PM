@@ -123,8 +123,7 @@ function mergeDashboardWithLocal(serverData, localSurveys) {
 
   const sortedProvinces = Array.from(provinceCounts.entries())
     .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 8);
+    .sort((a, b) => b.count - a.count);
 
   return {
     updatedAt: new Date().toISOString(),
