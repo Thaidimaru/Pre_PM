@@ -39,7 +39,7 @@ export function ProvinceChart({ provinces = [] }) {
                 isDark ? 'bg-slate-900/60 text-slate-400 border-slate-800/80' : 'bg-slate-50 text-slate-600 border-slate-200'
               )}
             >
-              <span className="col-span-1">#</span>
+              <span className="col-span-1">ลำดับที่</span>
               <span className="col-span-4">จังหวัด</span>
               <span className="col-span-5">สัดส่วน</span>
               <span className="col-span-2 text-right">รวม</span>
