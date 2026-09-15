@@ -566,52 +566,13 @@ export function SurveyReportModal({ isOpen, onClose, surveyData = {} }) {
                 </div>
 
                 {/* Section 5: สรุปผลการตรวจเยี่ยม */}
-                <div className="mb-1.5">
-                  <div className="bg-neutral-100 font-bold border border-black px-2.5 py-0.5 text-[13px] text-black">
+                <div className="mb-2">
+                  <div className="bg-neutral-100 font-bold border border-black px-2.5 py-1 text-[13.5px] text-black">
                     5. สรุปผลการตรวจเยี่ยมและข้อคิดเห็น (Survey Summary & Recommendations)
                   </div>
-                  <div className="border border-t-0 border-black p-2 text-[12.5px] leading-relaxed min-h-[38px] bg-white text-black">
+                  <div className="border border-t-0 border-black p-2.5 text-[13px] leading-relaxed min-h-[55px] bg-white text-black">
                     {summary}
                   </div>
-                </div>
-
-                {/* Section 6: การลงนามรับรองผลการตรวจเยี่ยม */}
-                <div className="mb-1.5">
-                  <div className="bg-neutral-100 font-bold border border-black px-2.5 py-0.5 text-[13px] text-black">
-                    6. การลงนามรับรองผลการตรวจเยี่ยม (Signatures & Acknowledgement)
-                  </div>
-                  <table className="w-full border-collapse border border-t-0 border-black text-[12px] leading-normal">
-                    <tbody>
-                      <tr>
-                        <td className="border border-black py-2 px-3 w-1/2 text-center align-top bg-white">
-                          <div className="font-bold text-black mb-1.5">ผู้ให้ข้อมูล / เจ้าของพื้นที่</div>
-                          <div className="my-1 text-neutral-700">ลงชื่อ ................................................................</div>
-                          <div className="font-semibold text-black mt-0.5">
-                            ( {informantName || contactName || '................................................................'} )
-                          </div>
-                          <div className="text-neutral-700 text-[11px] mt-0.5">
-                            ตำแหน่ง: {contactPosition || 'เจ้าของพื้นที่ / ผู้ดูแลสถานี'}
-                          </div>
-                          <div className="text-neutral-600 text-[11px] mt-0.5">
-                            วันที่: {visitDateStr}
-                          </div>
-                        </td>
-                        <td className="border border-black py-2 px-3 w-1/2 text-center align-top bg-white">
-                          <div className="font-bold text-black mb-1.5">ผู้ปฏิบัติงาน / ตัวแทนผู้รับจ้าง</div>
-                          <div className="my-1 text-neutral-700">ลงชื่อ ................................................................</div>
-                          <div className="font-semibold text-black mt-0.5">
-                            ( {operatorName || 'วิศวกรผู้ควบคุมงาน'} )
-                          </div>
-                          <div className="text-neutral-700 text-[11px] mt-0.5">
-                            ตำแหน่ง: วิศวกรผู้ปฏิบัติงาน / ตัวแทนผู้รับจ้าง
-                          </div>
-                          <div className="text-neutral-600 text-[11px] mt-0.5">
-                            วันที่: {visitDateStr}
-                          </div>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
                 </div>
               </div>
 
