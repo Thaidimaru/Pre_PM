@@ -333,25 +333,30 @@ input::placeholder, textarea::placeholder {
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.18) !important;
 }
 
-.light [data-radix-select-trigger] {
+.light [data-radix-select-trigger],
+.light button[role="combobox"] {
   background-color: #ffffff !important;
   border-color: #cbd5e1 !important;
   color: #0f172a !important;
 }
 
-.light [data-radix-select-content] {
+.light [data-radix-select-content],
+.light [role="listbox"] {
   background-color: #ffffff !important;
   border-color: #cbd5e1 !important;
   color: #0f172a !important;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05) !important;
 }
 
-.light [data-radix-select-item] {
+.light [data-radix-select-item],
+.light [role="option"] {
   color: #334155 !important;
 }
 
 .light [data-radix-select-item]:hover,
-.light [data-radix-select-item][data-highlighted] {
+.light [data-radix-select-item][data-highlighted],
+.light [role="option"]:hover,
+.light [role="option"][data-highlighted] {
   background-color: #f0f9ff !important;
   color: #0284c7 !important;
 }
