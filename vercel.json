@@ -5,13 +5,7 @@
   "outputDirectory": "dist",
   "functions": {
     "api/*.js": {
-      "includeFiles": [
-        "DATABASE.xlsx",
-        "AGWBS.xlsx",
-        "access-password.txt",
-        "netlify/functions/api.js",
-        "survey-*.json"
-      ]
+      "includeFiles": "{DATABASE.xlsx,AGWBS.xlsx,access-password.txt,netlify/functions/api.js,survey-*.json}"
     }
   },
   "rewrites": [
