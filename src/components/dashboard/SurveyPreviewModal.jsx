@@ -23,6 +23,7 @@ import {
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useTheme } from '@/context/ThemeContext';
 import { cn } from '@/lib/utils';
+import { findStationByName } from '@/lib/api';
 
 export function SurveyPreviewModal({
   isOpen,
@@ -37,15 +38,17 @@ export function SurveyPreviewModal({
   if (!isOpen) return null;
 
   const rawFields = surveyData.fields || {};
-  const fields = { ...rawFields, ...surveyData, ...rawFields };
+  const fields = { ...surveyData, ...rawFields };
 
-  const recordId = fields.recordId || fields.record_id || '-';
-  const stationName = fields.station || fields.village || fields.stationSelect || 'สถานีวิทยุคมนาคม NBTC Microwave';
-  const province = fields.province || '';
-  const district = fields.district || '';
-  const subdistrict = fields.subdistrict || '';
-  const installationPlace = fields.installationPlace || fields.installation_place || '-';
-  const equipmentPlace = fields.equipmentPlace || fields.equipment_place || installationPlace || '-';
+  const stationName = fields.station || fields.village || fields.stationSelect || surveyData.station || 'สถานีวิทยุคมนาคม NBTC Microwave';
+  const stationLookup = findStationByName(stationName);
+
+  const recordId = surveyData.recordId || fields.recordId || fields.record_id || '-';
+  const province = fields.province || surveyData.province || stationLookup?.province || '';
+  const district = fields.district || surveyData.district || stationLookup?.district || '';
+  const subdistrict = fields.subdistrict || surveyData.subdistrict || stationLookup?.subdistrict || '';
+  const installationPlace = fields.installationPlace || fields.installation_place || stationLookup?.installation_place || stationLookup?.installationPlace || '-';
+  const equipmentPlace = fields.equipmentPlace || fields.equipment_place || stationLookup?.equipment_place || stationLookup?.equipmentPlace || installationPlace || '-';
 
   // Format full location
   const locationParts = [];
@@ -65,57 +68,64 @@ export function SurveyPreviewModal({
   const fullLocation = locationParts.length > 0 ? locationParts.join(' ') : (fields.village || fields.station || '-');
 
   // Visit Date & Time
-  const visitDateStr = fields.visitDate
-    ? new Date(fields.visitDate).toLocaleDateString('th-TH', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
-      })
-    : (fields.savedAt
-      ? new Date(fields.savedAt).toLocaleDateString('th-TH', {
+  const rawDate = fields.visitDate || fields.visit_date || fields.savedAt || surveyData.savedAt;
+  let visitDateStr = '-';
+  if (rawDate) {
+    try {
+      const dateObj = typeof rawDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawDate)
+        ? new Date(`${rawDate}T12:00:00`)
+        : new Date(rawDate);
+      if (!isNaN(dateObj.getTime())) {
+        visitDateStr = dateObj.toLocaleDateString('th-TH', {
           day: 'numeric',
           month: 'long',
           year: 'numeric'
-        })
+        });
+      }
+    } catch {}
+  }
+
+  const rawTime = fields.visitTime || fields.visit_time;
+  const visitTime = rawTime
+    ? `${rawTime} น.`
+    : (fields.savedAt || surveyData.savedAt
+      ? new Date(fields.savedAt || surveyData.savedAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.'
       : '-');
-  const visitTime = fields.visitTime ? `${fields.visitTime} น.` : (
-    fields.savedAt ? new Date(fields.savedAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.' : '-'
-  );
 
   // Contact Info
-  const contactName = fields.contactName || fields.contact_name || fields.informantName || '-';
-  const contactPosition = fields.contactPosition || fields.contact_position || 'เจ้าของพื้นที่ / ผู้ดูแลสถานี';
-  const contactVillage = fields.contactVillage || (subdistrict ? `ต.${subdistrict.replace(/^ต\./, '')}` : '-');
-  const contactPhone = fields.contactPhone || '-';
+  const contactName = fields.contactName || fields.contact_name || stationLookup?.contact_name || fields.informantName || fields.informant_name || '-';
+  const contactPosition = fields.contactPosition || fields.contact_position || stationLookup?.contact_position || 'เจ้าของพื้นที่ / ผู้ดูแลสถานี';
+  const contactVillage = fields.contactVillage || fields.contact_village || (subdistrict ? `ต.${subdistrict.replace(/^ต\./, '')}` : '-');
+  const contactPhone = fields.contactPhone || fields.contact_phone || fields.phone || fields.tel || '-';
 
   // Permission
-  const permit = fields.permit || 'อนุญาต';
-  const isPermitted = permit === 'อนุญาต' || permit === 'on';
-  const accessLimit = fields.accessLimit || 'ไม่มีข้อจำกัด';
+  const permit = fields.permit || surveyData.permit || 'อนุญาต';
+  const isPermitted = permit === 'อนุญาต' || permit === 'on' || permit === 'true' || permit === true;
+  const accessLimit = fields.accessLimit || fields.access_limit || 'ไม่มีข้อจำกัด';
 
   // Assessment fields
-  const radioStatus = fields.radioStatus || 'ปกติ';
+  const radioStatus = fields.radioStatus || fields.radio_status || 'ปกติ';
   const isRadioNormal = radioStatus === 'ปกติ';
 
-  const receiveStatus = fields.receiveStatus || 'ไม่พบ';
+  const receiveStatus = fields.receiveStatus || fields.receive_status || 'ไม่พบ';
   const isReceiveNormal = receiveStatus === 'ไม่พบ' || receiveStatus === 'ไม่พบปัญหา';
 
-  const transmitStatus = fields.transmitStatus || 'ไม่พบ';
+  const transmitStatus = fields.transmitStatus || fields.transmit_status || 'ไม่พบ';
   const isTransmitNormal = transmitStatus === 'ไม่พบ' || transmitStatus === 'ไม่พบปัญหา';
 
-  const powerStatus = fields.powerStatus || 'ไม่มี';
+  const powerStatus = fields.powerStatus || fields.power_status || 'ไม่มี';
   const isPowerNormal = powerStatus === 'ไม่มี' || powerStatus === 'ไม่มีปัญหา';
 
-  const batteryStatus = fields.batteryStatus || 'ไม่มี';
+  const batteryStatus = fields.batteryStatus || fields.battery_status || 'ไม่มี';
   const isBatteryNormal = batteryStatus === 'ไม่มี' || batteryStatus === 'ไม่มีปัญหา';
 
-  const userProblem = fields.userProblem || 'ไม่พบปัญหาเพิ่มเติม';
-  const siteCondition = fields.siteCondition || 'สภาพพื้นที่ปกติ พร้อมสำหรับการปฏิบัติงาน';
-  const antennaCondition = fields.antennaCondition || 'สภาพเสาและสายอากาศอยู่ในเกณฑ์ปกติ';
-  const workObstacle = fields.workObstacle || 'ไม่มีอุปสรรคในการปฏิบัติงาน';
-  const summary = fields.summary || 'เจ้าของพื้นที่ให้ความร่วมมือในการเข้าตรวจเยี่ยมและตรวจสอบสภาพระบบอุปกรณ์เป็นอย่างดี';
-  const informantName = fields.informantName || (contactName !== '-' ? contactName : '');
-  const operatorName = fields.operatorName || 'วิศวกรผู้ควบคุมงาน';
+  const userProblem = fields.userProblem || fields.user_problem || 'ไม่พบปัญหาเพิ่มเติม';
+  const siteCondition = fields.siteCondition || fields.site_condition || 'สภาพพื้นที่ปกติ พร้อมสำหรับการปฏิบัติงาน';
+  const antennaCondition = fields.antennaCondition || fields.antenna_condition || 'สภาพเสาและสายอากาศอยู่ในเกณฑ์ปกติ';
+  const workObstacle = fields.workObstacle || fields.work_obstacle || 'ไม่มีอุปสรรคในการปฏิบัติงาน';
+  const summary = fields.summary || fields.userSummary || 'เจ้าของพื้นที่ให้ความร่วมมือในการเข้าตรวจเยี่ยมและตรวจสอบสภาพระบบอุปกรณ์เป็นอย่างดี';
+  const informantName = fields.informantName || fields.informant_name || (contactName !== '-' ? contactName : '');
+  const operatorName = fields.operatorName || fields.operator_name || 'วิศวกรผู้ควบคุมงาน';
 
   // Photos
   const photos = Array.isArray(surveyData.photos) && surveyData.photos.length > 0

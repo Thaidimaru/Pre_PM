@@ -178,6 +178,32 @@ export async function fetchDashboardData() {
   return merged;
 }
 
+let cachedStationMap = new Map();
+
+export function findStationByName(name) {
+  if (!name) return null;
+  const cleanName = String(name).trim();
+  return cachedStationMap.get(cleanName) || null;
+}
+
+export function enrichSurveyFields(rawSurvey = {}) {
+  const fields = rawSurvey.fields || {};
+  const stationName = String(fields.station || fields.stationSelect || rawSurvey.station || '').trim();
+  const station = findStationByName(stationName);
+
+  return {
+    ...fields,
+    station: stationName || fields.station || rawSurvey.station || '',
+    province: fields.province || rawSurvey.province || station?.province || '',
+    district: fields.district || rawSurvey.district || station?.district || '',
+    subdistrict: fields.subdistrict || rawSurvey.subdistrict || station?.subdistrict || '',
+    installationPlace: fields.installationPlace || fields.installation_place || station?.installation_place || station?.installationPlace || '',
+    equipmentPlace: fields.equipmentPlace || fields.equipment_place || station?.equipment_place || station?.equipmentPlace || '',
+    contactName: fields.contactName || fields.contact_name || station?.contact_name || station?.contactName || '',
+    contactPosition: fields.contactPosition || fields.contact_position || station?.contact_position || station?.contactPosition || '',
+  };
+}
+
 export async function fetchStations(token = '') {
   const headers = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -191,7 +217,14 @@ export async function fetchStations(token = '') {
   if (!res.ok) {
     throw new Error(`Failed to load station directory (status ${res.status})`);
   }
-  return res.json();
+  const data = await res.json();
+  const stationList = Array.isArray(data.stations) ? data.stations : (Array.isArray(data) ? data : []);
+  for (const s of stationList) {
+    if (s && s.village) {
+      cachedStationMap.set(String(s.village).trim(), s);
+    }
+  }
+  return data;
 }
 
 export async function loginUser(password = '') {

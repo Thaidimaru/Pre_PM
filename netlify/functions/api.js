@@ -11,6 +11,7 @@ const PASSWORD_PATH = path.join(ROOT, "access-password.txt");
 const DATABASE_XLSX = path.join(ROOT, "DATABASE.xlsx");
 const AGWBS_XLSX = path.join(ROOT, "AGWBS.xlsx");
 const STORE_NAME = "survey-control-room";
+const SEED_SURVEYS_PATH = path.join(ROOT, "data/seed_surveys.json");
 const STATIONS_KEY = "stations.json";
 const LEGACY_SURVEYS_KEY = "surveys.json";
 const SURVEY_PREFIX = "survey/";
@@ -189,18 +190,46 @@ async function writeJson(key, value) {
 
 function loadLocalSurveys() {
   const localSurveys = [];
+  const seen = new Set();
+
+  // 1. Load from data/seed_surveys.json
+  try {
+    if (fs.existsSync(SEED_SURVEYS_PATH)) {
+      const items = JSON.parse(fs.readFileSync(SEED_SURVEYS_PATH, "utf8"));
+      if (Array.isArray(items)) {
+        for (const item of items) {
+          if (item && item.recordId && !seen.has(item.recordId)) {
+            seen.add(item.recordId);
+            localSurveys.push({
+              recordId: item.recordId,
+              savedAt: item.savedAt || new Date().toISOString(),
+              fields: item.fields || {},
+              photos: item.photos || [],
+            });
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("Could not read SEED_SURVEYS_PATH:", e);
+  }
+
+  // 2. Load from survey-*.json in ROOT
   try {
     const files = fs.readdirSync(ROOT).filter((f) => f.startsWith("survey-") && f.endsWith(".json"));
     for (const file of files) {
       try {
         const content = JSON.parse(fs.readFileSync(path.join(ROOT, file), "utf8"));
-        const recordId = file.replace(/\.json$/, "");
-        localSurveys.push({
-          recordId: content.recordId || recordId,
-          savedAt: content.savedAt || new Date().toISOString(),
-          fields: content.fields || {},
-          photos: content.photos || [],
-        });
+        const recordId = content.recordId || file.replace(/\.json$/, "");
+        if (!seen.has(recordId)) {
+          seen.add(recordId);
+          localSurveys.push({
+            recordId,
+            savedAt: content.savedAt || new Date().toISOString(),
+            fields: content.fields || {},
+            photos: content.photos || [],
+          });
+        }
       } catch {}
     }
   } catch {}

@@ -1,8 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Printer, X, FileText } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
 import { cn } from '@/lib/utils';
+import { findStationByName } from '@/lib/api';
 import nbtcLogo from '@/assets/images/nbtc-logo-dashboard.png';
 import forthLogo from '@/assets/images/forth-logo.png';
 
@@ -12,6 +13,9 @@ import forthLogo from '@/assets/images/forth-logo.png';
  * Matches on-screen preview and Chrome Print preview with 1:1 pixel fidelity.
  */
 export function SurveyReportModal({ isOpen, onClose, surveyData = {} }) {
+  const page1Ref = useRef(null);
+  const photoPageRefs = useRef([]);
+
   // Manage body class for zero-offset print layout and scroll lock
   useEffect(() => {
     if (isOpen) {
@@ -30,14 +34,17 @@ export function SurveyReportModal({ isOpen, onClose, surveyData = {} }) {
 
   // Extract recorded survey fields (supports both flat formData and DB records with fields)
   const rawFields = surveyData.fields || {};
-  const fields = { ...rawFields, ...surveyData, ...rawFields };
+  const fields = { ...surveyData, ...rawFields };
 
-  const stationName = fields.station || fields.village || fields.stationSelect || 'สถานีวิทยุคมนาคม NBTC Microwave';
-  const province = fields.province || '';
-  const district = fields.district || '';
-  const subdistrict = fields.subdistrict || '';
-  const installationPlace = fields.installationPlace || fields.installation_place || '';
-  const equipmentPlace = fields.equipmentPlace || fields.equipment_place || installationPlace || '-';
+  // Station info fallback from master database
+  const stationName = fields.station || fields.village || fields.stationSelect || surveyData.station || 'สถานีวิทยุคมนาคม NBTC Microwave';
+  const stationLookup = findStationByName(stationName);
+
+  const province = fields.province || surveyData.province || stationLookup?.province || '';
+  const district = fields.district || surveyData.district || stationLookup?.district || '';
+  const subdistrict = fields.subdistrict || surveyData.subdistrict || stationLookup?.subdistrict || '';
+  const installationPlace = fields.installationPlace || fields.installation_place || stationLookup?.installation_place || stationLookup?.installationPlace || '';
+  const equipmentPlace = fields.equipmentPlace || fields.equipment_place || stationLookup?.equipment_place || stationLookup?.equipmentPlace || installationPlace || '-';
 
   // Format full location text
   const locationParts = [];
@@ -61,65 +68,77 @@ export function SurveyReportModal({ isOpen, onClose, surveyData = {} }) {
     : (fields.village || fields.station || '-');
 
   // Visit Date & Time
-  const visitDateStr = fields.visitDate
-    ? new Date(fields.visitDate).toLocaleDateString('th-TH', {
+  const rawDate = fields.visitDate || fields.visit_date || fields.savedAt || surveyData.savedAt;
+  let visitDateStr = '-';
+  if (rawDate) {
+    try {
+      const dateObj = typeof rawDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawDate)
+        ? new Date(`${rawDate}T12:00:00`)
+        : new Date(rawDate);
+      if (!isNaN(dateObj.getTime())) {
+        visitDateStr = dateObj.toLocaleDateString('th-TH', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
+        });
+      }
+    } catch {}
+  }
+  if (visitDateStr === '-') {
+    visitDateStr = new Date().toLocaleDateString('th-TH', {
       day: 'numeric',
       month: 'long',
       year: 'numeric'
-    })
-    : (fields.savedAt
-      ? new Date(fields.savedAt).toLocaleDateString('th-TH', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
-      })
-      : new Date().toLocaleDateString('th-TH', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
-      }));
+    });
+  }
 
-  const visitTime = fields.visitTime ? `${fields.visitTime} น.` : '-';
-  const recordId = fields.recordId || fields.record_id || `PREPM-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
+  const rawTime = fields.visitTime || fields.visit_time;
+  const visitTime = rawTime
+    ? `${rawTime} น.`
+    : (fields.savedAt || surveyData.savedAt
+      ? new Date(fields.savedAt || surveyData.savedAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.'
+      : '-');
+
+  const recordId = surveyData.recordId || fields.recordId || fields.record_id || `PM-${new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 15)}`;
 
   // Contact Info
-  const contactName = fields.contactName || fields.contact_name || fields.informantName || '-';
-  const contactPosition = fields.contactPosition || fields.contact_position || 'เจ้าของพื้นที่ / ผู้ดูแลสถานี';
-  const contactVillage = fields.contactVillage || (subdistrict ? `ต.${subdistrict.replace(/^ต\./, '')}` : '-');
-  const contactPhone = fields.contactPhone || '-';
+  const contactName = fields.contactName || fields.contact_name || stationLookup?.contact_name || fields.informantName || fields.informant_name || '-';
+  const contactPosition = fields.contactPosition || fields.contact_position || stationLookup?.contact_position || 'เจ้าของพื้นที่ / ผู้ดูแลสถานี';
+  const contactVillage = fields.contactVillage || fields.contact_village || (subdistrict ? `ต.${subdistrict.replace(/^ต\./, '')}` : '-');
+  const contactPhone = fields.contactPhone || fields.contact_phone || fields.phone || fields.tel || '-';
 
   // Permission
-  const permit = fields.permit || 'อนุญาต';
-  const isPermitted = permit === 'อนุญาต';
-  const accessLimit = fields.accessLimit || 'ไม่มีข้อจำกัด';
+  const permit = fields.permit || surveyData.permit || 'อนุญาต';
+  const isPermitted = permit === 'อนุญาต' || permit === 'on' || permit === 'true' || permit === true;
+  const accessLimit = fields.accessLimit || fields.access_limit || 'ไม่มีข้อจำกัด';
 
   // Equipment & Operational Assessment Fields
-  const radioStatus = fields.radioStatus || 'ปกติ';
+  const radioStatus = fields.radioStatus || fields.radio_status || 'ปกติ';
   const isRadioNormal = radioStatus === 'ปกติ';
 
-  const receiveStatus = fields.receiveStatus || 'ไม่พบ';
+  const receiveStatus = fields.receiveStatus || fields.receive_status || 'ไม่พบ';
   const isReceiveNormal = receiveStatus === 'ไม่พบ' || receiveStatus === 'ไม่พบปัญหา';
 
-  const transmitStatus = fields.transmitStatus || 'ไม่พบ';
+  const transmitStatus = fields.transmitStatus || fields.transmit_status || 'ไม่พบ';
   const isTransmitNormal = transmitStatus === 'ไม่พบ' || transmitStatus === 'ไม่พบปัญหา';
 
-  const powerStatus = fields.powerStatus || 'ไม่มี';
+  const powerStatus = fields.powerStatus || fields.power_status || 'ไม่มี';
   const isPowerNormal = powerStatus === 'ไม่มี' || powerStatus === 'ไม่มีปัญหา';
 
-  const batteryStatus = fields.batteryStatus || 'ไม่มี';
+  const batteryStatus = fields.batteryStatus || fields.battery_status || 'ไม่มี';
   const isBatteryNormal = batteryStatus === 'ไม่มี' || batteryStatus === 'ไม่มีปัญหา';
 
-  const userProblem = fields.userProblem || 'ไม่พบปัญหาเพิ่มเติม';
+  const userProblem = fields.userProblem || fields.user_problem || 'ไม่พบปัญหาเพิ่มเติม';
 
   // Environment & Site Conditions
-  const siteCondition = fields.siteCondition || 'สภาพพื้นที่ปกติ พร้อมสำหรับการปฏิบัติงาน';
-  const antennaCondition = fields.antennaCondition || 'สภาพเสาและสายอากาศอยู่ในเกณฑ์ปกติ';
-  const workObstacle = fields.workObstacle || 'ไม่มีอุปสรรคในการปฏิบัติงาน';
+  const siteCondition = fields.siteCondition || fields.site_condition || 'สภาพพื้นที่ปกติ พร้อมสำหรับการปฏิบัติงาน';
+  const antennaCondition = fields.antennaCondition || fields.antenna_condition || 'สภาพเสาและสายอากาศอยู่ในเกณฑ์ปกติ';
+  const workObstacle = fields.workObstacle || fields.work_obstacle || 'ไม่มีอุปสรรคในการปฏิบัติงาน';
 
   // Summary & Signatures
-  const summary = fields.summary || 'เจ้าของพื้นที่ให้ความร่วมมือในการเข้าตรวจเยี่ยมและตรวจสอบสภาพระบบอุปกรณ์เป็นอย่างดี';
-  const informantName = fields.informantName || (contactName !== '-' ? contactName : '');
-  const operatorName = fields.operatorName || 'วิศวกรผู้ควบคุมงาน';
+  const summary = fields.summary || fields.userSummary || 'เจ้าของพื้นที่ให้ความร่วมมือในการเข้าตรวจเยี่ยมและตรวจสอบสภาพระบบอุปกรณ์เป็นอย่างดี';
+  const informantName = fields.informantName || fields.informant_name || (contactName !== '-' ? contactName : '');
+  const operatorName = fields.operatorName || fields.operator_name || 'วิศวกรผู้ควบคุมงาน';
 
   // Photo attachments
   const photos = Array.isArray(surveyData.photos) && surveyData.photos.length > 0
@@ -232,18 +251,18 @@ export function SurveyReportModal({ isOpen, onClose, surveyData = {} }) {
                 fontFamily: "'Sarabun', 'Noto Sans Thai', 'Inter', system-ui, sans-serif",
                 color: '#000000',
                 backgroundColor: '#ffffff',
-                padding: '12mm 15mm 12mm 15mm'
+                padding: '8mm 12mm 8mm 12mm'
               }}
             >
               <div>
                 {/* 1. Header with Logos & Project Title */}
-                <div className="flex items-center justify-between pb-2 border-b-2 border-black mb-2">
+                <div className="flex items-center justify-between pb-1.5 border-b-2 border-black mb-1.5">
                   {/* Left Logo - NBTC */}
                   <div className="w-24 shrink-0 flex items-center justify-start">
                     <img
                       src={nbtcLogo}
                       alt="NBTC Logo"
-                      style={{ height: '50px', width: 'auto' }}
+                      style={{ height: '48px', width: 'auto' }}
                       className="object-contain"
                       onError={(e) => {
                         e.currentTarget.src = '/nbtc-logo-dashboard.png';
@@ -253,16 +272,16 @@ export function SurveyReportModal({ isOpen, onClose, surveyData = {} }) {
 
                   {/* Center Title - NBTC Microwave Project Title */}
                   <div className="flex-1 min-w-0 text-center px-1 space-y-0.5">
-                    <h1 className="text-[17px] font-bold leading-tight tracking-normal whitespace-nowrap text-black">
+                    <h1 className="text-[16px] font-bold leading-tight tracking-normal whitespace-nowrap text-black">
                       การจัดซื้ออุปกรณ์พร้อมดำเนินการติดตั้ง
                     </h1>
-                    <h2 className="text-[15px] font-bold leading-tight tracking-normal whitespace-nowrap text-neutral-900">
+                    <h2 className="text-[14.5px] font-bold leading-tight tracking-normal whitespace-nowrap text-neutral-900">
                       โครงการเพิ่มประสิทธิภาพระบบโครงข่ายสื่อสารด้วยอุปกรณ์ทวนสัญญาณผ่านคลื่นความถี่สูง (SHF)
                     </h2>
-                    <h3 className="text-[14px] font-bold leading-tight tracking-normal whitespace-nowrap text-neutral-800">
+                    <h3 className="text-[13.5px] font-bold leading-tight tracking-normal whitespace-nowrap text-neutral-800">
                       เพื่อสนับสนุนการปฏิบัติราชการและแก้ไขปัญหาให้กับประชาชนในพื้นที่ห่างไกล
                     </h3>
-                    <h4 className="text-[13.5px] font-bold leading-tight tracking-normal whitespace-nowrap text-neutral-700">
+                    <h4 className="text-[13px] font-bold leading-tight tracking-normal whitespace-nowrap text-neutral-700">
                       สัญญาเลขที่ ๘๖๘๐๒๒๘ ลงวันที่ ๒๓ กรกฎาคม ๒๕๖๘
                     </h4>
                   </div>
@@ -272,7 +291,7 @@ export function SurveyReportModal({ isOpen, onClose, surveyData = {} }) {
                     <img
                       src={forthLogo}
                       alt="FORTH Logo"
-                      style={{ height: '28px', width: 'auto' }}
+                      style={{ height: '26px', width: 'auto' }}
                       className="object-contain"
                       onError={(e) => {
                         e.currentTarget.style.display = 'none';
@@ -282,7 +301,7 @@ export function SurveyReportModal({ isOpen, onClose, surveyData = {} }) {
                 </div>
 
                 {/* Document Meta Subheader */}
-                <div className="flex justify-between items-center text-[13px] pb-1.5 text-neutral-900 font-medium">
+                <div className="flex justify-between items-center text-[12.5px] pb-1 text-neutral-900 font-medium">
                   <div>
                     <span className="font-bold">รหัสรายการสำรวจ: </span>
                     <span className="font-mono font-bold text-black">{recordId}</span>
@@ -295,11 +314,11 @@ export function SurveyReportModal({ isOpen, onClose, surveyData = {} }) {
                 </div>
 
                 {/* Section 1: ข้อมูลสถานีและสถานที่ติดตั้ง */}
-                <div className="mb-2">
-                  <div className="bg-neutral-100 font-bold border border-black px-2.5 py-1 text-[13.5px] text-black">
+                <div className="mb-1.5">
+                  <div className="bg-neutral-100 font-bold border border-black px-2.5 py-0.5 text-[13px] text-black">
                     1. ข้อมูลสถานีและสถานที่ติดตั้ง (Station & Location Details)
                   </div>
-                  <table className="w-full border-collapse border border-t-0 border-black text-[13px] leading-[1.3]">
+                  <table className="w-full border-collapse border border-t-0 border-black text-[12.5px] leading-[1.3]">
                     <tbody>
                       <tr>
                         <td className="border border-black py-1 px-3 w-[18%] font-bold bg-neutral-50/80">
@@ -319,8 +338,18 @@ export function SurveyReportModal({ isOpen, onClose, surveyData = {} }) {
                         <td className="border border-black py-1 px-3 font-bold bg-neutral-50/80">
                           สถานที่ติดตั้ง
                         </td>
-                        <td className="border border-black py-1 px-3 text-black" colSpan={3}>
-                          {locationText}
+                        <td className="border border-black py-1 px-3 text-black">
+                          {installationPlace || locationText || '-'}
+                        </td>
+                        <td className="border border-black py-1 px-3 font-bold bg-neutral-50/80">
+                          ตำบล / อำเภอ / จังหวัด
+                        </td>
+                        <td className="border border-black py-1 px-3 text-black">
+                          {[
+                            subdistrict ? (subdistrict.startsWith('ต.') ? subdistrict : `ต.${subdistrict}`) : '',
+                            district ? (district.startsWith('อ.') ? district : `อ.${district}`) : '',
+                            province ? (province.startsWith('จ.') ? province : `จ.${province}`) : ''
+                          ].filter(Boolean).join(' ') || '-'}
                         </td>
                       </tr>
                     </tbody>
@@ -537,13 +566,52 @@ export function SurveyReportModal({ isOpen, onClose, surveyData = {} }) {
                 </div>
 
                 {/* Section 5: สรุปผลการตรวจเยี่ยม */}
-                <div className="mb-2">
-                  <div className="bg-neutral-100 font-bold border border-black px-2.5 py-1 text-[13.5px] text-black">
+                <div className="mb-1.5">
+                  <div className="bg-neutral-100 font-bold border border-black px-2.5 py-0.5 text-[13px] text-black">
                     5. สรุปผลการตรวจเยี่ยมและข้อคิดเห็น (Survey Summary & Recommendations)
                   </div>
-                  <div className="border border-t-0 border-black p-2 text-[13px] leading-relaxed min-h-[48px] bg-white text-black">
+                  <div className="border border-t-0 border-black p-2 text-[12.5px] leading-relaxed min-h-[38px] bg-white text-black">
                     {summary}
                   </div>
+                </div>
+
+                {/* Section 6: การลงนามรับรองผลการตรวจเยี่ยม */}
+                <div className="mb-1.5">
+                  <div className="bg-neutral-100 font-bold border border-black px-2.5 py-0.5 text-[13px] text-black">
+                    6. การลงนามรับรองผลการตรวจเยี่ยม (Signatures & Acknowledgement)
+                  </div>
+                  <table className="w-full border-collapse border border-t-0 border-black text-[12px] leading-normal">
+                    <tbody>
+                      <tr>
+                        <td className="border border-black py-2 px-3 w-1/2 text-center align-top bg-white">
+                          <div className="font-bold text-black mb-1.5">ผู้ให้ข้อมูล / เจ้าของพื้นที่</div>
+                          <div className="my-1 text-neutral-700">ลงชื่อ ................................................................</div>
+                          <div className="font-semibold text-black mt-0.5">
+                            ( {informantName || contactName || '................................................................'} )
+                          </div>
+                          <div className="text-neutral-700 text-[11px] mt-0.5">
+                            ตำแหน่ง: {contactPosition || 'เจ้าของพื้นที่ / ผู้ดูแลสถานี'}
+                          </div>
+                          <div className="text-neutral-600 text-[11px] mt-0.5">
+                            วันที่: {visitDateStr}
+                          </div>
+                        </td>
+                        <td className="border border-black py-2 px-3 w-1/2 text-center align-top bg-white">
+                          <div className="font-bold text-black mb-1.5">ผู้ปฏิบัติงาน / ตัวแทนผู้รับจ้าง</div>
+                          <div className="my-1 text-neutral-700">ลงชื่อ ................................................................</div>
+                          <div className="font-semibold text-black mt-0.5">
+                            ( {operatorName || 'วิศวกรผู้ควบคุมงาน'} )
+                          </div>
+                          <div className="text-neutral-700 text-[11px] mt-0.5">
+                            ตำแหน่ง: วิศวกรผู้ปฏิบัติงาน / ตัวแทนผู้รับจ้าง
+                          </div>
+                          <div className="text-neutral-600 text-[11px] mt-0.5">
+                            วันที่: {visitDateStr}
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
 
@@ -613,7 +681,7 @@ export function SurveyReportModal({ isOpen, onClose, surveyData = {} }) {
                         <div key={photo.id || idx} className="border border-black p-2 bg-white rounded-sm flex flex-col items-center">
                           <div className="h-44 w-full flex items-center justify-center bg-neutral-50 overflow-hidden mb-1.5 border border-neutral-200 rounded-sm">
                             <img
-                              src={photo.url || photo.dataUrl}
+                              src={photo.dataUrl || photo.url}
                               alt={photo.name}
                               className="max-h-44 w-auto max-w-full object-contain"
                               loading="eager"
