@@ -32,9 +32,16 @@ import {
   DialogTitle
 } from '@/components/ui/dialog';
 import { fetchStations, submitSurvey } from '@/lib/api';
+import { SurveyReportModal } from '@/components/export/SurveyReportModal';
+import { Printer, FileText } from 'lucide-react';
+import { useTheme } from '@/context/ThemeContext';
+import { cn } from '@/lib/utils';
 
 export function FieldVisitView() {
+  const { isDark } = useTheme();
   const [stations, setStations] = useState([]);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [lastSavedReport, setLastSavedReport] = useState(null);
   const [formData, setFormData] = useState({
     permit: 'อนุญาต',
     radioStatus: 'ปกติ',
@@ -88,10 +95,13 @@ export function FieldVisitView() {
     if (activeStation) {
       setFormData((prev) => ({
         ...prev,
-        installationPlace: activeStation.installationPlace || prev.installationPlace || '',
-        equipmentPlace: activeStation.equipmentPlace || prev.equipmentPlace || '',
-        contactName: activeStation.contactName || prev.contactName || '',
-        contactPosition: activeStation.contactPosition || prev.contactPosition || ''
+        province: activeStation.province || '',
+        district: activeStation.district || '',
+        subdistrict: activeStation.subdistrict || '',
+        installationPlace: activeStation.installationPlace || '',
+        equipmentPlace: activeStation.equipmentPlace || '',
+        contactName: activeStation.contactName || '',
+        contactPosition: activeStation.contactPosition || ''
       }));
     }
   }, [activeStation]);
@@ -140,6 +150,31 @@ export function FieldVisitView() {
 
       const result = await submitSurvey(token, formData, photosPayload);
 
+      const reportPhotos = selectedPhotos.map((p, idx) => ({
+        id: idx + 1,
+        name: p.name,
+        contentType: p.type,
+        url: p.previewUrl,
+        dataUrl: p.base64Data ? `data:${p.type};base64,${p.base64Data}` : p.previewUrl,
+      }));
+
+      // Preserve snapshot of saved report for immediate export
+      setLastSavedReport({
+        recordId: result.recordId,
+        savedAt: new Date().toISOString(),
+        station: formData.station,
+        province: formData.province || activeStation?.province || '',
+        permit: formData.permit,
+        photos: reportPhotos,
+        fields: {
+          ...formData,
+          province: formData.province || activeStation?.province || '',
+          district: formData.district || activeStation?.district || '',
+          subdistrict: formData.subdistrict || activeStation?.subdistrict || '',
+          photos: reportPhotos,
+        }
+      });
+
       setStatusMessage({
         text: `บันทึกข้อมูลรหัส ${result.recordId} เรียบร้อยแล้ว`,
         type: 'success'
@@ -165,6 +200,18 @@ export function FieldVisitView() {
     }
   };
 
+  const inputClass = cn(
+    'w-full rounded-xl border px-4 py-2.5 text-base transition-colors focus:outline-none focus:ring-2',
+    isDark
+      ? 'border-[rgba(115,149,174,0.25)] bg-[rgba(6,19,33,0.7)] text-white placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/40'
+      : 'border-slate-300 bg-slate-50/70 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-sky-500 focus:ring-sky-500/20 shadow-2xs'
+  );
+  const textareaClass = cn(inputClass, 'resize-y');
+  const labelClass = cn('block text-sm font-semibold mb-1.5', isDark ? 'text-slate-300' : 'text-slate-700');
+  const sectionHeaderBorder = isDark ? 'border-slate-800' : 'border-slate-200';
+  const sectionIconBox = isDark ? 'bg-blue-500/20 text-cyan-400' : 'bg-sky-100 text-sky-600 border border-sky-200';
+  const sectionTitle = cn('text-base font-bold tracking-normal leading-normal', isDark ? 'text-white' : 'text-slate-900');
+
   return (
     <motion.main
       initial={{ opacity: 0, y: 15 }}
@@ -174,32 +221,49 @@ export function FieldVisitView() {
     >
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Form Header */}
-        <div className="rounded-2xl border border-blue-500/30 bg-gradient-to-r from-blue-950/60 via-slate-900/80 to-blue-950/60 p-6 shadow-2xl backdrop-blur-xl">
-          <div className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-400">
+        <div
+          className={cn(
+            'rounded-2xl border p-6 shadow-xl backdrop-blur-xl transition-colors',
+            isDark
+              ? 'border-blue-500/30 bg-gradient-to-r from-blue-950/60 via-slate-900/80 to-blue-950/60 text-white'
+              : 'border-slate-200/90 bg-white/95 text-slate-900 shadow-md'
+          )}
+        >
+          <div
+            className={cn(
+              'text-xs font-bold uppercase tracking-[0.2em]',
+              isDark ? 'text-cyan-400' : 'text-sky-600'
+            )}
+          >
             FIELD VISIT / SITE RECORD
           </div>
-          <h1 className="mt-1 text-2xl font-extrabold tracking-normal leading-normal text-white lg:text-3xl">
+          <h1
+            className={cn(
+              'mt-1 text-2xl font-extrabold tracking-normal leading-normal lg:text-3xl',
+              isDark ? 'text-white' : 'text-slate-900'
+            )}
+          >
             <ShinyText>แบบบันทึกเข้าตรวจเยี่ยมเจ้าของพื้นที่</ShinyText>
           </h1>
-          <p className="mt-1 text-sm text-slate-400 leading-relaxed">
+          <p className={cn('mt-1 text-sm leading-relaxed', isDark ? 'text-slate-400' : 'text-slate-500')}>
             บันทึกการขออนุญาตเข้าพื้นที่ สภาพอุปกรณ์ภาคสนาม และภาพถ่ายประกอบการทำงาน
           </p>
         </div>
 
         {/* 01 ข้อมูลสถานี */}
         <GlassCard hoverEffect={false} className="space-y-4">
-          <div className="flex items-center gap-2.5 pb-3 border-b border-slate-800">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/20 text-cyan-400">
+          <div className={cn('flex items-center gap-2.5 pb-3 border-b', sectionHeaderBorder)}>
+            <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg', sectionIconBox)}>
               <RadioIcon className="h-4 w-4" />
             </div>
-            <h2 className="text-base font-bold text-white tracking-normal leading-normal">
+            <h2 className={sectionTitle}>
               01 · ข้อมูลสถานี
             </h2>
           </div>
 
           <div className="space-y-4">
             <div>
-              <label htmlFor="station" className="block text-sm font-semibold text-slate-300 mb-1.5">
+              <label htmlFor="station" className={labelClass}>
                 ชื่อสถานี <span className="text-rose-400">*</span>
               </label>
               <input
@@ -209,7 +273,7 @@ export function FieldVisitView() {
                 placeholder="พิมพ์เพื่อค้นหาชื่อสถานี..."
                 value={formData.station || ''}
                 onChange={(e) => updateField('station', e.target.value)}
-                className="w-full rounded-xl border border-[rgba(115,149,174,0.25)] bg-[rgba(6,19,33,0.7)] px-4 py-2.5 text-base text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                className={inputClass}
               />
               <datalist id="stations-list">
                 {stations.map((s, idx) => (
@@ -222,7 +286,7 @@ export function FieldVisitView() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="installationPlace" className="block text-sm font-semibold text-slate-300 mb-1.5">
+                <label htmlFor="installationPlace" className={labelClass}>
                   สถานที่ติดตั้ง
                 </label>
                 <input
@@ -230,11 +294,11 @@ export function FieldVisitView() {
                   type="text"
                   value={formData.installationPlace || ''}
                   onChange={(e) => updateField('installationPlace', e.target.value)}
-                  className="w-full rounded-xl border border-[rgba(115,149,174,0.25)] bg-[rgba(6,19,33,0.7)] px-4 py-2.5 text-base text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                  className={inputClass}
                 />
               </div>
               <div>
-                <label htmlFor="equipmentPlace" className="block text-sm font-semibold text-slate-300 mb-1.5">
+                <label htmlFor="equipmentPlace" className={labelClass}>
                   สถานที่วางเครื่อง
                 </label>
                 <input
@@ -242,14 +306,14 @@ export function FieldVisitView() {
                   type="text"
                   value={formData.equipmentPlace || ''}
                   onChange={(e) => updateField('equipmentPlace', e.target.value)}
-                  className="w-full rounded-xl border border-[rgba(115,149,174,0.25)] bg-[rgba(6,19,33,0.7)] px-4 py-2.5 text-base text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                  className={inputClass}
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="visitDate" className="block text-sm font-semibold text-slate-300 mb-1.5">
+                <label htmlFor="visitDate" className={labelClass}>
                   วันที่เข้าพื้นที่
                 </label>
                 <input
@@ -257,11 +321,11 @@ export function FieldVisitView() {
                   type="date"
                   value={formData.visitDate || ''}
                   onChange={(e) => updateField('visitDate', e.target.value)}
-                  className="w-full rounded-xl border border-[rgba(115,149,174,0.25)] bg-[rgba(6,19,33,0.7)] px-4 py-2.5 text-base text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                  className={inputClass}
                 />
               </div>
               <div>
-                <label htmlFor="visitTime" className="block text-sm font-semibold text-slate-300 mb-1.5">
+                <label htmlFor="visitTime" className={labelClass}>
                   เวลาเข้าพื้นที่
                 </label>
                 <input
@@ -269,7 +333,7 @@ export function FieldVisitView() {
                   type="time"
                   value={formData.visitTime || ''}
                   onChange={(e) => updateField('visitTime', e.target.value)}
-                  className="w-full rounded-xl border border-[rgba(115,149,174,0.25)] bg-[rgba(6,19,33,0.7)] px-4 py-2.5 text-base text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                  className={inputClass}
                 />
               </div>
             </div>
@@ -278,18 +342,18 @@ export function FieldVisitView() {
 
         {/* 02 ผู้ให้ข้อมูลในพื้นที่ */}
         <GlassCard hoverEffect={false} className="space-y-4">
-          <div className="flex items-center gap-2.5 pb-3 border-b border-slate-800">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/20 text-cyan-400">
+          <div className={cn('flex items-center gap-2.5 pb-3 border-b', sectionHeaderBorder)}>
+            <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg', sectionIconBox)}>
               <User className="h-4 w-4" />
             </div>
-            <h2 className="text-base font-bold text-white tracking-normal leading-normal">
+            <h2 className={sectionTitle}>
               02 · ผู้ให้ข้อมูลในพื้นที่
             </h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="contactName" className="block text-sm font-semibold text-slate-300 mb-1.5">
+              <label htmlFor="contactName" className={labelClass}>
                 ชื่อ - สกุล
               </label>
               <input
@@ -297,11 +361,11 @@ export function FieldVisitView() {
                 type="text"
                 value={formData.contactName || ''}
                 onChange={(e) => updateField('contactName', e.target.value)}
-                className="w-full rounded-xl border border-[rgba(115,149,174,0.25)] bg-[rgba(6,19,33,0.7)] px-4 py-2.5 text-base text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                className={inputClass}
               />
             </div>
             <div>
-              <label htmlFor="contactPosition" className="block text-sm font-semibold text-slate-300 mb-1.5">
+              <label htmlFor="contactPosition" className={labelClass}>
                 ตำแหน่ง
               </label>
               <input
@@ -309,11 +373,11 @@ export function FieldVisitView() {
                 type="text"
                 value={formData.contactPosition || ''}
                 onChange={(e) => updateField('contactPosition', e.target.value)}
-                className="w-full rounded-xl border border-[rgba(115,149,174,0.25)] bg-[rgba(6,19,33,0.7)] px-4 py-2.5 text-base text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                className={inputClass}
               />
             </div>
             <div>
-              <label htmlFor="contactVillage" className="block text-sm font-semibold text-slate-300 mb-1.5">
+              <label htmlFor="contactVillage" className={labelClass}>
                 หน่วยงาน / หมู่บ้าน
               </label>
               <input
@@ -321,11 +385,11 @@ export function FieldVisitView() {
                 type="text"
                 value={formData.contactVillage || ''}
                 onChange={(e) => updateField('contactVillage', e.target.value)}
-                className="w-full rounded-xl border border-[rgba(115,149,174,0.25)] bg-[rgba(6,19,33,0.7)] px-4 py-2.5 text-base text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                className={inputClass}
               />
             </div>
             <div>
-              <label htmlFor="contactPhone" className="block text-sm font-semibold text-slate-300 mb-1.5">
+              <label htmlFor="contactPhone" className={labelClass}>
                 เบอร์โทรศัพท์
               </label>
               <input
@@ -333,7 +397,7 @@ export function FieldVisitView() {
                 type="tel"
                 value={formData.contactPhone || ''}
                 onChange={(e) => updateField('contactPhone', e.target.value)}
-                className="w-full rounded-xl border border-[rgba(115,149,174,0.25)] bg-[rgba(6,19,33,0.7)] px-4 py-2.5 text-base text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                className={inputClass}
               />
             </div>
           </div>
@@ -341,18 +405,18 @@ export function FieldVisitView() {
 
         {/* 03 การขออนุญาตเข้าพื้นที่ (Radix UI Radio Group) */}
         <GlassCard hoverEffect={false} className="space-y-4">
-          <div className="flex items-center gap-2.5 pb-3 border-b border-slate-800">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/20 text-cyan-400">
+          <div className={cn('flex items-center gap-2.5 pb-3 border-b', sectionHeaderBorder)}>
+            <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg', sectionIconBox)}>
               <ShieldCheck className="h-4 w-4" />
             </div>
-            <h2 className="text-base font-bold text-white tracking-normal leading-normal">
+            <h2 className={sectionTitle}>
               03 · การขออนุญาตเข้าพื้นที่
             </h2>
           </div>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-300 mb-2">
+              <label className={cn('block text-sm font-semibold mb-2', isDark ? 'text-slate-300' : 'text-slate-700')}>
                 ได้รับอนุญาตให้ดำเนินการหรือไม่ <span className="text-rose-400">*</span>
               </label>
               <RadioGroup
@@ -362,23 +426,33 @@ export function FieldVisitView() {
               >
                 <label
                   htmlFor="permit-allow"
-                  className="flex items-center gap-2.5 rounded-xl border border-[rgba(115,149,174,0.25)] bg-[rgba(6,19,33,0.7)] px-5 py-3 text-sm font-medium text-slate-200 hover:border-emerald-500/40 cursor-pointer transition-colors"
+                  className={cn(
+                    'flex items-center gap-2.5 rounded-xl border px-5 py-3 text-sm font-medium cursor-pointer transition-colors',
+                    isDark
+                      ? 'border-[rgba(115,149,174,0.25)] bg-[rgba(6,19,33,0.7)] text-slate-200 hover:border-emerald-500/40'
+                      : 'border-slate-200 bg-white text-slate-800 hover:border-emerald-400 shadow-2xs'
+                  )}
                 >
                   <RadioGroupItem value="อนุญาต" id="permit-allow" />
-                  <span className="text-emerald-400 font-semibold">อนุญาต</span>
+                  <span className={isDark ? 'text-emerald-400 font-semibold' : 'text-emerald-600 font-semibold'}>อนุญาต</span>
                 </label>
                 <label
                   htmlFor="permit-deny"
-                  className="flex items-center gap-2.5 rounded-xl border border-[rgba(115,149,174,0.25)] bg-[rgba(6,19,33,0.7)] px-5 py-3 text-sm font-medium text-slate-200 hover:border-rose-500/40 cursor-pointer transition-colors"
+                  className={cn(
+                    'flex items-center gap-2.5 rounded-xl border px-5 py-3 text-sm font-medium cursor-pointer transition-colors',
+                    isDark
+                      ? 'border-[rgba(115,149,174,0.25)] bg-[rgba(6,19,33,0.7)] text-slate-200 hover:border-rose-500/40'
+                      : 'border-slate-200 bg-white text-slate-800 hover:border-rose-400 shadow-2xs'
+                  )}
                 >
                   <RadioGroupItem value="ไม่อนุญาต" id="permit-deny" />
-                  <span className="text-rose-400 font-semibold">ไม่อนุญาต</span>
+                  <span className={isDark ? 'text-rose-400 font-semibold' : 'text-rose-600 font-semibold'}>ไม่อนุญาต</span>
                 </label>
               </RadioGroup>
             </div>
 
             <div>
-              <label htmlFor="accessLimit" className="block text-sm font-semibold text-slate-300 mb-1.5">
+              <label htmlFor="accessLimit" className={labelClass}>
                 ข้อจำกัดในการเข้าพื้นที่
               </label>
               <textarea
@@ -387,7 +461,7 @@ export function FieldVisitView() {
                 value={formData.accessLimit || ''}
                 onChange={(e) => updateField('accessLimit', e.target.value)}
                 placeholder="ระบุข้อจำกัดหรือเงื่อนไขเพิ่มเติม (ถ้ามี)..."
-                className="w-full rounded-xl border border-[rgba(115,149,174,0.25)] bg-[rgba(6,19,33,0.7)] px-4 py-2.5 text-base text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 resize-y"
+                className={textareaClass}
               />
             </div>
           </div>
@@ -395,25 +469,35 @@ export function FieldVisitView() {
 
         {/* 04 สอบถามการใช้งาน (Radix UI Select) */}
         <GlassCard hoverEffect={false} className="space-y-4">
-          <div className="flex items-center gap-2.5 pb-3 border-b border-slate-800">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/20 text-cyan-400">
+          <div className={cn('flex items-center gap-2.5 pb-3 border-b', sectionHeaderBorder)}>
+            <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg', sectionIconBox)}>
               <Zap className="h-4 w-4" />
             </div>
-            <h2 className="text-base font-bold text-white tracking-normal leading-normal">
+            <h2 className={sectionTitle}>
               04 · สอบถามการใช้งาน
             </h2>
           </div>
 
           <div className="space-y-4">
-            <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950/40">
+            <div
+              className={cn(
+                'overflow-hidden rounded-xl border transition-colors',
+                isDark ? 'border-slate-800 bg-slate-950/40' : 'border-slate-200 bg-white shadow-2xs'
+              )}
+            >
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-slate-800 bg-slate-900/60 text-xs font-semibold text-slate-400">
+                  <tr
+                    className={cn(
+                      'border-b text-xs font-semibold transition-colors',
+                      isDark ? 'border-slate-800 bg-slate-900/60 text-slate-400' : 'border-slate-200 bg-slate-50 text-slate-600'
+                    )}
+                  >
                     <th className="px-4 py-3">หัวข้อการประเมิน</th>
                     <th className="px-4 py-3 w-48">ผลการตรวจสอบ</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/50">
+                <tbody className={cn('divide-y', isDark ? 'divide-slate-800/50' : 'divide-slate-200')}>
                   {[
                     ['radioStatus', 'สามารถใช้งานเครื่องวิทยุได้ตามปกติ', ['ปกติ', 'ไม่ปกติ']],
                     ['receiveStatus', 'พบปัญหาการรับสัญญาณ', ['ไม่พบ', 'พบ']],
@@ -421,8 +505,16 @@ export function FieldVisitView() {
                     ['powerStatus', 'ระบบไฟฟ้ามีปัญหาหรือไม่', ['ไม่มี', 'มี']],
                     ['batteryStatus', 'แบตเตอรี่สำรองมีปัญหาหรือไม่', ['ไม่มี', 'มี']]
                   ].map(([key, label, options]) => (
-                    <tr key={key} className="hover:bg-slate-800/30">
-                      <td className="px-4 py-3 font-medium text-slate-200 leading-normal">{label}</td>
+                    <tr
+                      key={key}
+                      className={cn(
+                        'transition-colors',
+                        isDark ? 'hover:bg-slate-800/30' : 'hover:bg-sky-50/50'
+                      )}
+                    >
+                      <td className={cn('px-4 py-3 font-medium leading-normal', isDark ? 'text-slate-200' : 'text-slate-800')}>
+                        {label}
+                      </td>
                       <td className="px-4 py-2.5">
                         <Select
                           value={formData[key] || options[0]}
@@ -447,7 +539,7 @@ export function FieldVisitView() {
             </div>
 
             <div>
-              <label htmlFor="userProblem" className="block text-sm font-semibold text-slate-300 mb-1.5">
+              <label htmlFor="userProblem" className={labelClass}>
                 ปัญหาเพิ่มเติมที่ผู้ใช้งานแจ้ง
               </label>
               <textarea
@@ -455,7 +547,7 @@ export function FieldVisitView() {
                 rows={2}
                 value={formData.userProblem || ''}
                 onChange={(e) => updateField('userProblem', e.target.value)}
-                className="w-full rounded-xl border border-[rgba(115,149,174,0.25)] bg-[rgba(6,19,33,0.7)] px-4 py-2.5 text-base text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 resize-y"
+                className={textareaClass}
               />
             </div>
           </div>
@@ -463,18 +555,18 @@ export function FieldVisitView() {
 
         {/* 05 สภาพแวดล้อมหน้างาน */}
         <GlassCard hoverEffect={false} className="space-y-4">
-          <div className="flex items-center gap-2.5 pb-3 border-b border-slate-800">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/20 text-cyan-400">
+          <div className={cn('flex items-center gap-2.5 pb-3 border-b', sectionHeaderBorder)}>
+            <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg', sectionIconBox)}>
               <TreePine className="h-4 w-4" />
             </div>
-            <h2 className="text-base font-bold text-white tracking-normal leading-normal">
+            <h2 className={sectionTitle}>
               05 · สภาพแวดล้อมหน้างาน
             </h2>
           </div>
 
           <div className="space-y-4">
             <div>
-              <label htmlFor="siteCondition" className="block text-sm font-semibold text-slate-300 mb-1.5">
+              <label htmlFor="siteCondition" className={labelClass}>
                 สภาพพื้นที่ติดตั้งอุปกรณ์
               </label>
               <textarea
@@ -482,12 +574,12 @@ export function FieldVisitView() {
                 rows={2}
                 value={formData.siteCondition || ''}
                 onChange={(e) => updateField('siteCondition', e.target.value)}
-                className="w-full rounded-xl border border-[rgba(115,149,174,0.25)] bg-[rgba(6,19,33,0.7)] px-4 py-2.5 text-base text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 resize-y"
+                className={textareaClass}
               />
             </div>
 
             <div>
-              <label htmlFor="antennaCondition" className="block text-sm font-semibold text-slate-300 mb-1.5">
+              <label htmlFor="antennaCondition" className={labelClass}>
                 สภาพเสาอากาศและสายอากาศที่มองเห็นได้จากพื้น
               </label>
               <textarea
@@ -495,12 +587,12 @@ export function FieldVisitView() {
                 rows={2}
                 value={formData.antennaCondition || ''}
                 onChange={(e) => updateField('antennaCondition', e.target.value)}
-                className="w-full rounded-xl border border-[rgba(115,149,174,0.25)] bg-[rgba(6,19,33,0.7)] px-4 py-2.5 text-base text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 resize-y"
+                className={textareaClass}
               />
             </div>
 
             <div>
-              <label htmlFor="workObstacle" className="block text-sm font-semibold text-slate-300 mb-1.5">
+              <label htmlFor="workObstacle" className={labelClass}>
                 อุปสรรคในการปฏิบัติงาน
               </label>
               <textarea
@@ -508,7 +600,7 @@ export function FieldVisitView() {
                 rows={2}
                 value={formData.workObstacle || ''}
                 onChange={(e) => updateField('workObstacle', e.target.value)}
-                className="w-full rounded-xl border border-[rgba(115,149,174,0.25)] bg-[rgba(6,19,33,0.7)] px-4 py-2.5 text-base text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 resize-y"
+                className={textareaClass}
               />
             </div>
           </div>
@@ -516,11 +608,11 @@ export function FieldVisitView() {
 
         {/* 06 ภาพถ่ายก่อนดำเนินงาน */}
         <GlassCard hoverEffect={false} className="space-y-4">
-          <div className="flex items-center gap-2.5 pb-3 border-b border-slate-800">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/20 text-cyan-400">
+          <div className={cn('flex items-center gap-2.5 pb-3 border-b', sectionHeaderBorder)}>
+            <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg', sectionIconBox)}>
               <Camera className="h-4 w-4" />
             </div>
-            <h2 className="text-base font-bold text-white tracking-normal leading-normal">
+            <h2 className={sectionTitle}>
               06 · ภาพถ่ายก่อนดำเนินงาน
             </h2>
           </div>
@@ -529,13 +621,18 @@ export function FieldVisitView() {
             {/* Upload Drag & Drop Area */}
             <label
               htmlFor="photos-input"
-              className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-blue-500/30 bg-blue-950/20 p-6 text-center hover:border-blue-500/60 hover:bg-blue-950/30 cursor-pointer transition-all duration-200"
+              className={cn(
+                'flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center cursor-pointer transition-all duration-200',
+                isDark
+                  ? 'border-blue-500/30 bg-blue-950/20 hover:border-blue-500/60 hover:bg-blue-950/30 text-slate-200'
+                  : 'border-sky-300 bg-sky-50/50 hover:border-sky-400 hover:bg-sky-50 text-slate-800'
+              )}
             >
-              <UploadCloud className="h-8 w-8 text-cyan-400 mb-2" />
-              <div className="text-sm font-semibold text-slate-200">
+              <UploadCloud className={cn('h-8 w-8 mb-2', isDark ? 'text-cyan-400' : 'text-sky-600')} />
+              <div className={cn('text-sm font-semibold', isDark ? 'text-slate-200' : 'text-slate-800')}>
                 คลิกเพื่อเลือกภาพถ่ายหน้างาน (สามารถเลือกพร้อมกันได้หลายภาพ)
               </div>
-              <div className="text-xs text-slate-400 mt-1">
+              <div className={cn('text-xs mt-1', isDark ? 'text-slate-400' : 'text-slate-500')}>
                 รองรับไฟล์ JPG, PNG, WebP
               </div>
               <input
@@ -555,7 +652,10 @@ export function FieldVisitView() {
                 {selectedPhotos.map((photo, idx) => (
                   <div
                     key={idx}
-                    className="group relative aspect-square rounded-xl overflow-hidden border border-blue-500/30 bg-slate-900 shadow-md"
+                    className={cn(
+                      'group relative aspect-square rounded-xl overflow-hidden border shadow-md transition-colors',
+                      isDark ? 'border-blue-500/30 bg-slate-900' : 'border-slate-200 bg-slate-100'
+                    )}
                   >
                     <img
                       src={photo.previewUrl}
@@ -568,7 +668,7 @@ export function FieldVisitView() {
                       <button
                         type="button"
                         onClick={() => setActivePreviewPhoto(photo)}
-                        className="rounded-lg bg-blue-600/80 p-2 text-white hover:bg-blue-600 transition-colors"
+                        className="rounded-lg bg-blue-600/80 p-2 text-white hover:bg-blue-600 transition-colors cursor-pointer"
                         title="ดูภาพขนาดใหญ่"
                       >
                         <ZoomIn className="h-4 w-4" />
@@ -576,7 +676,7 @@ export function FieldVisitView() {
                       <button
                         type="button"
                         onClick={() => handleRemovePhoto(idx)}
-                        className="rounded-lg bg-rose-600/80 p-2 text-white hover:bg-rose-600 transition-colors"
+                        className="rounded-lg bg-rose-600/80 p-2 text-white hover:bg-rose-600 transition-colors cursor-pointer"
                         title="ลบภาพนี้"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -595,18 +695,18 @@ export function FieldVisitView() {
 
         {/* 07 ยืนยันข้อมูล */}
         <GlassCard hoverEffect={false} className="space-y-4">
-          <div className="flex items-center gap-2.5 pb-3 border-b border-slate-800">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/20 text-cyan-400">
+          <div className={cn('flex items-center gap-2.5 pb-3 border-b', sectionHeaderBorder)}>
+            <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg', sectionIconBox)}>
               <CheckSquare className="h-4 w-4" />
             </div>
-            <h2 className="text-base font-bold text-white tracking-normal leading-normal">
+            <h2 className={sectionTitle}>
               07 · ยืนยันข้อมูล
             </h2>
           </div>
 
           <div className="space-y-4">
             <div>
-              <label htmlFor="summary" className="block text-sm font-semibold text-slate-300 mb-1.5">
+              <label htmlFor="summary" className={labelClass}>
                 สรุปสิ่งที่ได้รับแจ้งจากเจ้าของพื้นที่
               </label>
               <textarea
@@ -614,13 +714,13 @@ export function FieldVisitView() {
                 rows={3}
                 value={formData.summary || ''}
                 onChange={(e) => updateField('summary', e.target.value)}
-                className="w-full rounded-xl border border-[rgba(115,149,174,0.25)] bg-[rgba(6,19,33,0.7)] px-4 py-2.5 text-base text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 resize-y"
+                className={textareaClass}
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="informantName" className="block text-sm font-semibold text-slate-300 mb-1.5">
+                <label htmlFor="informantName" className={labelClass}>
                   ชื่อผู้ให้ข้อมูล
                 </label>
                 <input
@@ -628,11 +728,11 @@ export function FieldVisitView() {
                   type="text"
                   value={formData.informantName || ''}
                   onChange={(e) => updateField('informantName', e.target.value)}
-                  className="w-full rounded-xl border border-[rgba(115,149,174,0.25)] bg-[rgba(6,19,33,0.7)] px-4 py-2.5 text-base text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                  className={inputClass}
                 />
               </div>
               <div>
-                <label htmlFor="operatorName" className="block text-sm font-semibold text-slate-300 mb-1.5">
+                <label htmlFor="operatorName" className={labelClass}>
                   ชื่อผู้ปฏิบัติงาน
                 </label>
                 <input
@@ -640,7 +740,7 @@ export function FieldVisitView() {
                   type="text"
                   value={formData.operatorName || ''}
                   onChange={(e) => updateField('operatorName', e.target.value)}
-                  className="w-full rounded-xl border border-[rgba(115,149,174,0.25)] bg-[rgba(6,19,33,0.7)] px-4 py-2.5 text-base text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                  className={inputClass}
                 />
               </div>
             </div>
@@ -671,22 +771,47 @@ export function FieldVisitView() {
         {/* Status Feedback Message */}
         {statusMessage.text && (
           <div
-            className={`flex items-center gap-2.5 rounded-xl border p-4 text-sm font-medium ${
+            className={cn(
+              'flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border p-4 text-sm font-medium transition-colors',
               statusMessage.type === 'success'
-                ? 'border-emerald-500/40 bg-emerald-950/40 text-emerald-300'
+                ? isDark
+                  ? 'border-emerald-500/40 bg-emerald-950/40 text-emerald-300'
+                  : 'border-emerald-300 bg-emerald-50 text-emerald-800'
                 : statusMessage.type === 'error'
-                ? 'border-rose-500/40 bg-rose-950/40 text-rose-300'
-                : 'border-blue-500/40 bg-blue-950/40 text-blue-300'
-            }`}
-          >
-            {statusMessage.type === 'success' ? (
-              <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-emerald-400" />
-            ) : statusMessage.type === 'error' ? (
-              <AlertCircle className="h-5 w-5 flex-shrink-0 text-rose-400" />
-            ) : (
-              <Loader2 className="h-5 w-5 flex-shrink-0 animate-spin text-blue-400" />
+                ? isDark
+                  ? 'border-rose-500/40 bg-rose-950/40 text-rose-300'
+                  : 'border-rose-300 bg-rose-50 text-rose-800'
+                : isDark
+                ? 'border-blue-500/40 bg-blue-950/40 text-blue-300'
+                : 'border-sky-300 bg-sky-50 text-sky-800'
             )}
-            <span>{statusMessage.text}</span>
+          >
+            <div className="flex items-center gap-2.5">
+              {statusMessage.type === 'success' ? (
+                <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-emerald-500" />
+              ) : statusMessage.type === 'error' ? (
+                <AlertCircle className="h-5 w-5 flex-shrink-0 text-rose-500" />
+              ) : (
+                <Loader2 className="h-5 w-5 flex-shrink-0 animate-spin text-blue-500" />
+              )}
+              <span>{statusMessage.text}</span>
+            </div>
+
+            {statusMessage.type === 'success' && lastSavedReport && (
+              <button
+                type="button"
+                onClick={() => setShowReportModal(true)}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition-all cursor-pointer shadow-xs self-start sm:self-auto shrink-0',
+                  isDark
+                    ? 'border-emerald-500/40 bg-emerald-900/60 text-emerald-200 hover:bg-emerald-800 hover:text-white'
+                    : 'border-emerald-300 bg-emerald-600 text-white hover:bg-emerald-700'
+                )}
+              >
+                <Printer className="h-3.5 w-3.5" />
+                <span>พิมพ์ / Export PDF</span>
+              </button>
+            )}
           </div>
         )}
       </form>
@@ -696,9 +821,9 @@ export function FieldVisitView() {
         open={Boolean(activePreviewPhoto)}
         onOpenChange={(open) => !open && setActivePreviewPhoto(null)}
       >
-        <DialogContent className="max-w-2xl bg-slate-950/95 border-blue-500/40 p-4">
+        <DialogContent className={cn('max-w-2xl p-4', isDark ? 'bg-slate-950/95 border-blue-500/40' : 'bg-white border-slate-200 shadow-xl')}>
           <DialogHeader>
-            <DialogTitle className="text-sm font-medium text-slate-300 truncate">
+            <DialogTitle className={cn('text-sm font-medium truncate', isDark ? 'text-slate-300' : 'text-slate-700')}>
               {activePreviewPhoto?.name}
             </DialogTitle>
           </DialogHeader>
@@ -713,6 +838,13 @@ export function FieldVisitView() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Survey A4 Report Modal for newly saved record */}
+      <SurveyReportModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        surveyData={lastSavedReport || {}}
+      />
     </motion.main>
   );
 }

@@ -5,8 +5,11 @@ import { Sidebar } from '@/components/Sidebar';
 import { DashboardView } from '@/components/dashboard/DashboardView';
 import { FieldVisitView } from '@/components/field/FieldVisitView';
 import { LoginView } from '@/components/auth/LoginView';
+import { useTheme } from '@/context/ThemeContext';
+import { cn } from '@/lib/utils';
 
 export function App() {
+  const { isDark } = useTheme();
   const [token, setToken] = useState(() => sessionStorage.getItem('surveyToken') || '');
   const [currentPage, setCurrentPage] = useState(() => {
     const path = window.location.pathname;
@@ -61,7 +64,14 @@ export function App() {
 
   if (!token) {
     return (
-      <div className="relative min-h-screen bg-[radial-gradient(ellipse_at_top_right,rgba(8,105,255,0.18),transparent_60%),linear-gradient(135deg,#020b1b,#031a3a_48%,#020f25)] text-slate-100 flex flex-col justify-center">
+      <div
+        className={cn(
+          'relative min-h-screen flex flex-col justify-center transition-colors duration-300',
+          isDark
+            ? 'bg-[radial-gradient(ellipse_at_top_right,rgba(8,105,255,0.18),transparent_60%),linear-gradient(135deg,#020b1b,#031a3a_48%,#020f25)] text-slate-100'
+            : 'bg-[radial-gradient(ellipse_at_top_right,rgba(14,165,233,0.12),transparent_60%),linear-gradient(135deg,#f8fafc,#edf2f7_48%,#e2e8f0)] text-slate-900'
+        )}
+      >
         <Spotlight />
         <LoginView onLoginSuccess={handleLoginSuccess} />
       </div>
@@ -69,7 +79,14 @@ export function App() {
   }
 
   return (
-    <div className="relative min-h-screen bg-[radial-gradient(ellipse_at_top_right,rgba(8,105,255,0.18),transparent_60%),linear-gradient(135deg,#020b1b,#031a3a_48%,#020f25)] text-slate-100">
+    <div
+      className={cn(
+        'relative min-h-screen transition-colors duration-300',
+        isDark
+          ? 'bg-[radial-gradient(ellipse_at_top_right,rgba(8,105,255,0.18),transparent_60%),linear-gradient(135deg,#020b1b,#031a3a_48%,#020f25)] text-slate-100'
+          : 'bg-[radial-gradient(ellipse_at_top_right,rgba(14,165,233,0.12),transparent_60%),linear-gradient(135deg,#f8fafc,#edf2f7_48%,#e2e8f0)] text-slate-900'
+      )}
+    >
       <Spotlight />
 
       {/* Top Fixed Navbar */}

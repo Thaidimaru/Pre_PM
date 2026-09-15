@@ -1,60 +1,96 @@
 import React from 'react';
 import { MapPin } from 'lucide-react';
 import { GlassCard } from '@/components/ui/glass-card';
+import { useTheme } from '@/context/ThemeContext';
+import { cn } from '@/lib/utils';
 
 export function ProvinceChart({ provinces = [] }) {
+  const { isDark } = useTheme();
   const maxProvinceCount = Math.max(...provinces.map((p) => p.count), 1);
 
   return (
     <GlassCard className="flex flex-col h-full" hoverEffect={false}>
       {/* Panel Title */}
-      <div className="flex items-center gap-2 pb-4 border-b border-slate-800/80">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/20 text-cyan-300">
+      <div className={cn('flex items-center gap-2 pb-4 border-b', isDark ? 'border-slate-800/80' : 'border-slate-200')}>
+        <div
+          className={cn(
+            'flex h-8 w-8 items-center justify-center rounded-lg',
+            isDark ? 'bg-blue-500/20 text-cyan-300' : 'bg-sky-100 text-sky-600'
+          )}
+        >
           <MapPin className="h-4 w-4" />
         </div>
-        <h2 className="text-lg font-bold text-white tracking-normal leading-normal">
+        <h2 className={cn('text-lg font-bold tracking-normal leading-normal', isDark ? 'text-white' : 'text-slate-900')}>
           สรุปผลการสำรวจรายจังหวัด
         </h2>
       </div>
 
       {/* Province Breakdown List */}
       <div className="pt-5 flex-1 flex flex-col justify-between">
-        <div className="overflow-hidden rounded-xl border border-slate-800/80 bg-slate-950/30">
-            <div className="grid grid-cols-12 gap-2 bg-slate-900/60 px-4 py-2.5 text-xs font-semibold text-slate-400 border-b border-slate-800/80">
+        <div
+          className={cn(
+            'overflow-hidden rounded-xl border transition-colors',
+            isDark ? 'border-slate-800/80 bg-slate-950/30' : 'border-slate-200 bg-white'
+          )}
+        >
+            <div
+              className={cn(
+                'grid grid-cols-12 gap-2 px-4 py-2.5 text-xs font-semibold border-b',
+                isDark ? 'bg-slate-900/60 text-slate-400 border-slate-800/80' : 'bg-slate-50 text-slate-600 border-slate-200'
+              )}
+            >
               <span className="col-span-1">#</span>
               <span className="col-span-4">จังหวัด</span>
               <span className="col-span-5">สัดส่วน</span>
               <span className="col-span-2 text-right">รวม</span>
             </div>
-            <div className="max-h-[300px] overflow-y-auto divide-y divide-slate-800/40">
+            <div className={cn('max-h-[300px] overflow-y-auto divide-y', isDark ? 'divide-slate-800/40' : 'divide-slate-100')}>
               {provinces.length > 0 ? (
                 provinces.map((prov, i) => {
                   const pct = Math.max(10, Math.min(100, (prov.count / maxProvinceCount) * 100));
                   return (
                     <div
                       key={prov.name}
-                      className="grid grid-cols-12 gap-2 items-center px-4 py-2 text-sm hover:bg-slate-800/30 transition-colors"
+                      className={cn(
+                        'grid grid-cols-12 gap-2 items-center px-4 py-2 text-sm transition-colors',
+                        isDark ? 'hover:bg-slate-800/30' : 'hover:bg-sky-50/50'
+                      )}
                     >
-                      <span className="col-span-1 text-slate-400 text-xs font-mono">{i + 1}.</span>
-                      <span className="col-span-4 font-medium text-slate-200 truncate" title={prov.name}>
+                      <span className={cn('col-span-1 text-xs font-mono', isDark ? 'text-slate-400' : 'text-slate-500')}>
+                        {i + 1}.
+                      </span>
+                      <span
+                        className={cn('col-span-4 font-medium truncate', isDark ? 'text-slate-200' : 'text-slate-800')}
+                        title={prov.name}
+                      >
                         {prov.name}
                       </span>
                       <div className="col-span-5 flex items-center pr-2">
-                        <div className="h-2 w-full rounded-full bg-slate-800 overflow-hidden">
+                        <div
+                          className={cn(
+                            'h-2 w-full rounded-full overflow-hidden transition-colors',
+                            isDark ? 'bg-slate-800' : 'bg-slate-200'
+                          )}
+                        >
                           <div
                             className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-700"
                             style={{ width: `${pct}%` }}
                           />
                         </div>
                       </div>
-                      <span className="col-span-2 text-right font-mono font-bold text-cyan-300">
+                      <span
+                        className={cn(
+                          'col-span-2 text-right font-mono font-bold',
+                          isDark ? 'text-cyan-300' : 'text-sky-600'
+                        )}
+                      >
                         {prov.count.toLocaleString()}
                       </span>
                     </div>
                   );
                 })
               ) : (
-                <div className="py-12 text-center text-sm text-slate-500">
+                <div className={cn('py-12 text-center text-sm', isDark ? 'text-slate-500' : 'text-slate-400')}>
                   ยังไม่มีข้อมูลจังหวัด
                 </div>
               )}
@@ -62,17 +98,22 @@ export function ProvinceChart({ provinces = [] }) {
           </div>
 
           {/* Map Legend */}
-          <div className="flex items-center justify-center gap-6 pt-4 text-xs text-slate-400">
+          <div
+            className={cn(
+              'flex items-center justify-center gap-6 pt-4 text-xs',
+              isDark ? 'text-slate-400' : 'text-slate-600'
+            )}
+          >
             <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#00d49a]" />
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_6px_#00d49a]" />
               <span>อนุญาต</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-rose-400 shadow-[0_0_6px_#ff4f67]" />
+              <span className="h-2.5 w-2.5 rounded-full bg-rose-500 shadow-[0_0_6px_#ff4f67]" />
               <span>ไม่อนุญาต</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-purple-400 shadow-[0_0_6px_#8b5cf6]" />
+              <span className="h-2.5 w-2.5 rounded-full bg-purple-500 shadow-[0_0_6px_#8b5cf6]" />
               <span>รอพิจารณา</span>
             </div>
           </div>

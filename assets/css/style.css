@@ -2,7 +2,7 @@
    NBTC Microwave — Survey Control Room (Pre-PM)
    Design System & Application Stylesheet
    ========================================================================== */
-:root { --bg:#07111f; --panel:rgba(13,27,45,.76); --panel2:rgba(17,34,55,.88); --line:rgba(137,181,216,.18); --text:#edf6ff; --muted:#91a8bc; --blue:#68b8ff; --cyan:#68e4e0; --pink:#ff879d; --green:#65d6a2; --shadow:0 25px 70px rgba(0,0,0,.28); --font-gui:"TH Sarabun New","TH SarabunPSK","Sarabun",sans-serif; }
+:root { --bg:#07111f; --panel:rgba(13,27,45,.76); --panel2:rgba(17,34,55,.88); --line:rgba(137,181,216,.18); --text:#edf6ff; --muted:#91a8bc; --blue:#68b8ff; --cyan:#68e4e0; --pink:#ff879d; --green:#65d6a2; --shadow:0 25px 70px rgba(0,0,0,.28); --font-gui:"Sarabun","Noto Sans Thai","Inter",system-ui,sans-serif; }
 *{box-sizing:border-box} html,body,button,input,select,textarea{font-family:var(--font-gui)}
 body{margin:0;color:var(--text);background:radial-gradient(circle at 15% 10%,#12365b 0,transparent 32%),radial-gradient(circle at 90% 15%,#3a183b 0,transparent 30%),linear-gradient(135deg,#050b14,#091828 55%,#07111d);min-height:100vh;-webkit-font-smoothing:antialiased;font-size:18px}
 .app{min-height:100vh;display:flex;flex-direction:column}.spot{position:fixed;inset:0;pointer-events:none;background:radial-gradient(500px circle at var(--mx,50%) var(--my,20%),rgba(104,184,255,.09),transparent 45%);z-index:1}

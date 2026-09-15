@@ -7,12 +7,15 @@ import base64
 import datetime as dt
 import json
 import mimetypes
+mimetypes.add_type('application/javascript', '.js')
+mimetypes.add_type('text/css', '.css')
+mimetypes.add_type('image/svg+xml', '.svg')
 import os
 from pathlib import Path
 import secrets
 import sqlite3
 import threading
-from urllib.parse import unquote
+from urllib.parse import unquote, quote
 import xml.etree.ElementTree as ET
 import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -29,6 +32,7 @@ class AppConfig:
     HTML_PATH = ROOT / "index.html"
     PASSWORD_PATH = ROOT / "access-password.txt"
     DATABASE_XLSX = ROOT / "DATABASE.xlsx"
+    AGWBS_XLSX = ROOT / "AGWBS.xlsx"
     PHOTOS_DIR = ROOT / "photos"
     ASSETS_DIR = ROOT / "assets"
     
@@ -72,7 +76,7 @@ class AuthService:
         """Validate bearer token and clean up expired tokens."""
         if not auth_header:
             return False
-        token = auth_header.removeprefix("Bearer ").strip()
+        token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else auth_header.strip()
         now = dt.datetime.now(dt.timezone.utc)
         with self._lock:
             expiry = self._tokens.get(token)
@@ -129,38 +133,79 @@ class DatabaseService:
                 );
             """)
 
-            # Seed stations from DATABASE.xlsx if empty
-            if conn.execute("SELECT COUNT(*) FROM stations").fetchone()[0] == 0:
-                cls._seed_stations_from_xlsx(conn)
+            # Synchronize stations from DATABASE.xlsx and AGWBS.xlsx
+            cls._sync_stations(conn)
 
             # Seed legacy survey JSON files if empty
             if conn.execute("SELECT COUNT(*) FROM surveys").fetchone()[0] == 0:
                 cls._seed_surveys_from_json(conn)
 
     @classmethod
-    def _seed_stations_from_xlsx(cls, conn: sqlite3.Connection):
-        """Parse master station records from DATABASE.xlsx."""
-        if not AppConfig.DATABASE_XLSX.exists():
-            return
-        rows = cls._read_xlsx_rows(AppConfig.DATABASE_XLSX)
-        for row in rows[2:]:
-            if len(row) > 2 and row[2]:
-                values = (
-                    str(row[2]).strip(),
-                    str(row[3]).strip() if len(row) > 3 else "",
-                    str(row[4]).strip() if len(row) > 4 else "",
-                    str(row[5]).strip() if len(row) > 5 else "",
-                    str(row[9]).strip() if len(row) > 9 else "",
-                    str(row[10]).strip() if len(row) > 10 else "",
-                    str(row[11]).strip() if len(row) > 11 else "",
-                    str(row[12]).strip() if len(row) > 12 else ""
-                )
-                conn.execute("""
-                    INSERT INTO stations
-                    (village, subdistrict, district, province, installation_place,
-                     equipment_place, contact_name, contact_position)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """, values)
+    def _sync_stations(cls, conn: sqlite3.Connection):
+        """Parse and synchronize master station records from DATABASE.xlsx and AGWBS.xlsx."""
+        existing = {
+            str(row[0]).strip()
+            for row in conn.execute("SELECT village FROM stations").fetchall()
+            if row[0]
+        }
+
+        # 1. Sync from DATABASE.xlsx
+        if AppConfig.DATABASE_XLSX.exists():
+            try:
+                rows = cls._read_xlsx_rows(AppConfig.DATABASE_XLSX)
+                for row in rows[2:]:
+                    if len(row) > 2 and row[2]:
+                        village = str(row[2]).strip()
+                        if village and village not in existing:
+                            values = (
+                                village,
+                                str(row[3]).strip() if len(row) > 3 else "",
+                                str(row[4]).strip() if len(row) > 4 else "",
+                                str(row[5]).strip() if len(row) > 5 else "",
+                                str(row[9]).strip() if len(row) > 9 else "",
+                                str(row[10]).strip() if len(row) > 10 else "",
+                                str(row[11]).strip() if len(row) > 11 else "",
+                                str(row[12]).strip() if len(row) > 12 else ""
+                            )
+                            conn.execute("""
+                                INSERT INTO stations
+                                (village, subdistrict, district, province, installation_place,
+                                 equipment_place, contact_name, contact_position)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                            """, values)
+                            existing.add(village)
+            except Exception as e:
+                print(f"Warning: Failed to sync DATABASE.xlsx: {e}")
+
+        # 2. Sync from AGWBS.xlsx (BSGW sheet)
+        if AppConfig.AGWBS_XLSX.exists():
+            try:
+                rows = cls._read_xlsx_rows(AppConfig.AGWBS_XLSX)
+                # Check header to confirm format
+                start_idx = 1 if (len(rows) > 0 and "สถานี" in str(rows[0][0])) else 0
+                for row in rows[start_idx:]:
+                    if len(row) > 0 and row[0]:
+                        village = str(row[0]).strip()
+                        if village and village not in existing and village != "สถานี":
+                            values = (
+                                village,
+                                str(row[1]).strip() if len(row) > 1 else "",
+                                str(row[2]).strip() if len(row) > 2 else "",
+                                str(row[3]).strip() if len(row) > 3 else "",
+                                "",
+                                "",
+                                "",
+                                ""
+                            )
+                            conn.execute("""
+                                INSERT INTO stations
+                                (village, subdistrict, district, province, installation_place,
+                                 equipment_place, contact_name, contact_position)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                            """, values)
+                            existing.add(village)
+            except Exception as e:
+                print(f"Warning: Failed to sync AGWBS.xlsx: {e}")
 
     @classmethod
     def _seed_surveys_from_json(cls, conn: sqlite3.Connection):
@@ -225,7 +270,19 @@ class DatabaseService:
         """Compile live dashboard KPI statistics, province bars, and recent entries."""
         with cls.connect() as conn:
             stations = [dict(s) for s in conn.execute("SELECT * FROM stations").fetchall()]
-            surveys = [dict(r) for r in conn.execute("SELECT record_id, saved_at, fields_json FROM surveys ORDER BY saved_at DESC").fetchall()]
+            surveys = [dict(r) for r in conn.execute("SELECT id, record_id, saved_at, fields_json FROM surveys ORDER BY saved_at DESC").fetchall()]
+            photo_rows = [dict(p) for p in conn.execute("SELECT id, survey_id, name, content_type, length(data) as size FROM survey_photos").fetchall()]
+
+        # Map photos by survey_id
+        photos_by_survey = {}
+        for p in photo_rows:
+            photos_by_survey.setdefault(p["survey_id"], []).append({
+                "id": p["id"],
+                "name": p["name"],
+                "contentType": p["content_type"],
+                "size": p["size"],
+                "url": f"/api/photos/{p['id']}"
+            })
 
         # Map stations by village name for accurate lookup
         station_map = {s["village"].strip(): s for s in stations if s.get("village")}
@@ -254,12 +311,43 @@ class DatabaseService:
 
             if len(recent) < 10:
                 permit_label = "อนุญาต" if permit in ("อนุญาต", "on") else (permit or "ยังไม่ระบุ")
+                survey_photos_list = photos_by_survey.get(survey["id"], [])
+                merged_fields = {
+                    "station": station_name,
+                    "subdistrict": station_info.get("subdistrict", "") if station_info else "",
+                    "district": station_info.get("district", "") if station_info else "",
+                    "province": province,
+                    "installationPlace": (station_info.get("installation_place", "") if station_info else "") or fields.get("installationPlace", ""),
+                    "equipmentPlace": (station_info.get("equipment_place", "") if station_info else "") or fields.get("equipmentPlace", ""),
+                    "contactName": (station_info.get("contact_name", "") if station_info else "") or fields.get("contactName", ""),
+                    "contactPosition": (station_info.get("contact_position", "") if station_info else "") or fields.get("contactPosition", ""),
+                    "photos": survey_photos_list,
+                    **fields
+                }
+                # Also ensure nested location and contact fallbacks are populated if empty in fields
+                if not merged_fields.get("installationPlace") and station_info:
+                    merged_fields["installationPlace"] = station_info.get("installation_place", "")
+                if not merged_fields.get("equipmentPlace") and station_info:
+                    merged_fields["equipmentPlace"] = station_info.get("equipment_place", "")
+                if not merged_fields.get("contactName") and station_info:
+                    merged_fields["contactName"] = station_info.get("contact_name", "")
+                if not merged_fields.get("contactPosition") and station_info:
+                    merged_fields["contactPosition"] = station_info.get("contact_position", "")
+                if not merged_fields.get("subdistrict") and station_info:
+                    merged_fields["subdistrict"] = station_info.get("subdistrict", "")
+                if not merged_fields.get("district") and station_info:
+                    merged_fields["district"] = station_info.get("district", "")
+                if not merged_fields.get("photos"):
+                    merged_fields["photos"] = survey_photos_list
+
                 recent.append({
                     "recordId": survey["record_id"],
                     "savedAt": survey["saved_at"],
                     "station": station_name or "ไม่ระบุสถานี",
                     "province": province,
-                    "permit": permit_label
+                    "permit": permit_label,
+                    "fields": merged_fields,
+                    "photos": survey_photos_list
                 })
 
         top_provinces = sorted(
@@ -369,7 +457,7 @@ class SurveyRequestHandler(BaseHTTPRequestHandler):
 
         # 2. Static Assets (/assets/css/..., /assets/js/..., /assets/...)
         if parsed_path.startswith("/assets/"):
-            rel_path = parsed_path.removeprefix("/assets/").lstrip("/")
+            rel_path = parsed_path[8:].lstrip("/")
             
             # Check dist/assets first if dist exists
             dist_asset = (AppConfig.DIST_DIR / "assets" / rel_path).resolve()
@@ -407,6 +495,71 @@ class SurveyRequestHandler(BaseHTTPRequestHandler):
                 return
             stations = DatabaseService.get_stations()
             self.send_json_response(200, {"stations": stations})
+            return
+
+        # 4.1 Photo Serving & Download: /api/photos/<id>, /photos/<id>, /photos/<name>
+        if parsed_path.startswith("/api/photos/") or parsed_path.startswith("/photos/"):
+            target_param = parsed_path.split("/")[-1]
+            with DatabaseService.connect() as conn:
+                row = None
+                if target_param.isdigit():
+                    row = conn.execute(
+                        "SELECT name, content_type, data FROM survey_photos WHERE id = ?",
+                        (int(target_param),)
+                    ).fetchone()
+                else:
+                    row = conn.execute(
+                        "SELECT name, content_type, data FROM survey_photos WHERE name = ? ORDER BY id DESC LIMIT 1",
+                        (target_param,)
+                    ).fetchone()
+
+                if row:
+                    name = row["name"] or "photo.jpg"
+                    ctype = row["content_type"] or "image/jpeg"
+                    data = row["data"]
+                    query_str = self.path.split("?", 1)[1] if "?" in self.path else ""
+                    is_download = "download=1" in query_str or "dl=1" in query_str
+                    disp = "attachment" if is_download else "inline"
+
+                    self.send_response(200)
+                    self.send_header("Content-Type", ctype)
+                    self.send_header("Content-Length", str(len(data)))
+                    safe_name = quote(name)
+                    self.send_header("Content-Disposition", f"{disp}; filename*=UTF-8''{safe_name}")
+                    self.send_header("Cache-Control", "public, max-age=86400")
+                    self.send_header("Access-Control-Allow-Origin", "*")
+                    self.end_headers()
+                    self.wfile.write(data)
+                    return
+            self.send_json_response(404, {"error": "Photo not found"})
+            return
+
+        # 4.2 API: Specific Survey Details & Photos: /api/survey/<record_id>
+        if parsed_path.startswith("/api/survey/"):
+            rec_id = parsed_path[12:].split("/")[0].strip()
+            with DatabaseService.connect() as conn:
+                s_row = conn.execute("SELECT id, record_id, saved_at, fields_json FROM surveys WHERE record_id = ?", (rec_id,)).fetchone()
+                if not s_row:
+                    self.send_json_response(404, {"error": "Survey not found"})
+                    return
+                p_rows = conn.execute(
+                    "SELECT id, name, content_type, length(data) as size FROM survey_photos WHERE survey_id = ?",
+                    (s_row["id"],)
+                ).fetchall()
+                photos = [
+                    {"id": r["id"], "name": r["name"], "contentType": r["content_type"], "size": r["size"], "url": f"/api/photos/{r['id']}"}
+                    for r in p_rows
+                ]
+                try:
+                    fields = json.loads(s_row["fields_json"])
+                except Exception:
+                    fields = {}
+            self.send_json_response(200, {
+                "recordId": s_row["record_id"],
+                "savedAt": s_row["saved_at"],
+                "fields": fields,
+                "photos": photos
+            })
             return
 
         # 5. Not Found

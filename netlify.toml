@@ -4,7 +4,7 @@
   functions = "netlify/functions"
 
 [functions]
-  included_files = ["access-password.txt", "DATABASE.xlsx"]
+  included_files = ["access-password.txt", "DATABASE.xlsx", "AGWBS.xlsx"]
 
 [[redirects]]
   from = "/login"
@@ -50,6 +50,12 @@
 
 [[redirects]]
   from = "/SURVEY_DATA.xlsx"
+  to = "/404"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/AGWBS.xlsx"
   to = "/404"
   status = 404
   force = true

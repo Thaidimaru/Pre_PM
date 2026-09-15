@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, ShieldCheck, Menu, X } from 'lucide-react';
+import { Calendar, Clock, ShieldCheck, Menu, X, Sun, Moon } from 'lucide-react';
 import { APP_VERSION } from '@/version';
+import { useTheme } from '@/context/ThemeContext';
+import { cn } from '@/lib/utils';
 import nbtcLogo from '@/assets/images/nbtc-logo-dashboard.png';
 
 export function Navbar({ onToggleMobileMenu, isMobileMenuOpen }) {
+  const { isDark, toggleTheme } = useTheme();
   const [timeStr, setTimeStr] = useState(() =>
     new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   );
@@ -24,7 +27,14 @@ export function Navbar({ onToggleMobileMenu, isMobileMenuOpen }) {
   });
 
   return (
-    <header className="sticky top-0 z-40 h-[88px] w-full border-b border-[rgba(28,139,255,0.45)] bg-[linear-gradient(90deg,#021735,#031b40)] shadow-[0_8px_30px_rgba(0,0,0,0.32)] backdrop-blur-xl">
+    <header
+      className={cn(
+        'sticky top-0 z-40 h-[88px] w-full border-b backdrop-blur-xl transition-colors duration-300',
+        isDark
+          ? 'border-[rgba(28,139,255,0.45)] bg-[linear-gradient(90deg,#021735,#031b40)] shadow-[0_8px_30px_rgba(0,0,0,0.32)] text-white'
+          : 'border-slate-200/80 bg-[linear-gradient(90deg,#ffffff,#f8fafc)] shadow-[0_4px_20px_rgba(0,0,0,0.06)] text-slate-800'
+      )}
+    >
       <div className="mx-auto flex h-full items-center justify-between px-4 sm:px-6 lg:px-10">
         {/* Brand & Mobile Menu Toggle */}
         <div className="flex items-center gap-3 sm:gap-4">
@@ -32,7 +42,12 @@ export function Navbar({ onToggleMobileMenu, isMobileMenuOpen }) {
           <button
             type="button"
             onClick={onToggleMobileMenu}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-blue-500/30 bg-blue-950/40 text-slate-200 hover:bg-blue-900/40 hover:text-white transition-colors lg:hidden focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className={cn(
+              'flex h-10 w-10 items-center justify-center rounded-xl border transition-colors lg:hidden focus:outline-none focus:ring-2 focus:ring-blue-500',
+              isDark
+                ? 'border-blue-500/30 bg-blue-950/40 text-slate-200 hover:bg-blue-900/40 hover:text-white'
+                : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900 shadow-xs'
+            )}
             aria-label={isMobileMenuOpen ? 'ปิดเมนู' : 'เปิดเมนู'}
           >
             {isMobileMenuOpen ? <X className="h-5 w-5 text-cyan-400" /> : <Menu className="h-5 w-5" />}
@@ -50,53 +65,138 @@ export function Navbar({ onToggleMobileMenu, isMobileMenuOpen }) {
           />
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5 sm:gap-2">
-              <span className="text-[10px] sm:text-xs font-bold tracking-[0.15em] sm:tracking-[0.2em] text-cyan-400">
+              <span
+                className={cn(
+                  'text-[10px] sm:text-xs font-bold tracking-[0.15em] sm:tracking-[0.2em]',
+                  isDark ? 'text-cyan-400' : 'text-sky-600'
+                )}
+              >
                 Pre Preventive Maintenance
               </span>
-              <span className="rounded bg-blue-500/20 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-semibold text-blue-300 border border-blue-500/30">
+              <span
+                className={cn(
+                  'rounded px-1.5 py-0.5 text-[9px] sm:text-[10px] font-semibold border',
+                  isDark
+                    ? 'bg-blue-500/20 text-blue-300 border-blue-500/30'
+                    : 'bg-sky-50 text-sky-700 border-sky-200 shadow-xs'
+                )}
+              >
                 v{APP_VERSION}
               </span>
             </div>
-            <span className="text-base sm:text-lg font-extrabold tracking-wide text-white lg:text-xl">
+            <span
+              className={cn(
+                'text-base sm:text-lg font-extrabold tracking-wide lg:text-xl',
+                isDark ? 'text-white' : 'text-slate-900'
+              )}
+            >
               NBTC
             </span>
           </div>
         </div>
 
-        {/* Live System Strip */}
-        <div className="hidden md:flex items-center gap-4 text-sm text-slate-300">
-          {/* Online status indicator */}
-          <div className="flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-950/40 px-3 py-1 text-emerald-300">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
-            </span>
-            <span className="text-xs font-medium">ระบบทำงานปกติ</span>
-          </div>
+        {/* Right Section: Mobile Theme Toggle & Desktop System Strip */}
+        <div className="flex items-center gap-3">
+          {/* Mobile Theme Toggle Button */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className={cn(
+              'flex md:hidden h-10 w-10 items-center justify-center rounded-xl border transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500',
+              isDark
+                ? 'border-blue-500/30 bg-blue-950/40 text-amber-400 hover:bg-blue-900/40'
+                : 'border-slate-300 bg-white text-indigo-600 hover:bg-slate-100 shadow-xs'
+            )}
+            title={isDark ? 'เปลี่ยนเป็นโหมดสว่าง (Light Mode)' : 'เปลี่ยนเป็นโหมดมืด (Dark Mode)'}
+            aria-label={isDark ? 'เปลี่ยนเป็นโหมดสว่าง (Light Mode)' : 'เปลี่ยนเป็นโหมดมืด (Dark Mode)'}
+          >
+            {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          </button>
 
-          <div className="h-6 w-px bg-slate-700/60" />
-
-          {/* Date & Time */}
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-cyan-400" />
-            <span>{dateStr}</span>
-          </div>
-
-          <div className="flex items-center gap-2 font-mono font-semibold text-white">
-            <Clock className="h-4 w-4 text-blue-400" />
-            <span>{timeStr} น.</span>
-          </div>
-
-          <div className="h-6 w-px bg-slate-700/60" />
-
-          {/* User profile */}
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-tr from-blue-600 to-cyan-500 text-white shadow-[0_0_12px_rgba(8,127,255,0.4)]">
-              <ShieldCheck className="h-5 w-5" />
+          {/* Live System Strip (Tablet & Desktop) */}
+          <div
+            className={cn(
+              'hidden md:flex items-center gap-4 text-sm',
+              isDark ? 'text-slate-300' : 'text-slate-600'
+            )}
+          >
+            {/* Online status indicator */}
+            <div
+              className={cn(
+                'flex items-center gap-2 rounded-full border px-3 py-1',
+                isDark
+                  ? 'border-emerald-500/30 bg-emerald-950/40 text-emerald-300'
+                  : 'border-emerald-300 bg-emerald-50 text-emerald-700 shadow-xs'
+              )}
+            >
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+              </span>
+              <span className="text-xs font-medium">ระบบทำงานปกติ</span>
             </div>
-            <div className="text-left leading-normal space-y-0.5">
-              <div className="text-xs font-semibold text-white">ผู้ดูแลระบบ</div>
-              <div className="text-[10px] text-slate-400">Administrator</div>
+
+            <div className={cn('h-6 w-px', isDark ? 'bg-slate-700/60' : 'bg-slate-300')} />
+
+            {/* Date & Time */}
+            <div className="flex items-center gap-2">
+              <Calendar className={cn('h-4 w-4', isDark ? 'text-cyan-400' : 'text-sky-600')} />
+              <span>{dateStr}</span>
+            </div>
+
+            <div
+              className={cn(
+                'flex items-center gap-2 font-mono font-semibold',
+                isDark ? 'text-white' : 'text-slate-900'
+              )}
+            >
+              <Clock className={cn('h-4 w-4', isDark ? 'text-blue-400' : 'text-blue-600')} />
+              <span>{timeStr} น.</span>
+            </div>
+
+            <div className={cn('h-6 w-px', isDark ? 'bg-slate-700/60' : 'bg-slate-300')} />
+
+            {/* Theme Toggle Button (Desktop) */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className={cn(
+                'flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500',
+                isDark
+                  ? 'border-blue-500/30 bg-blue-950/40 text-slate-200 hover:bg-blue-900/50 hover:text-white'
+                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900 shadow-xs'
+              )}
+              title={isDark ? 'เปลี่ยนเป็นโหมดสว่าง (Light Mode)' : 'เปลี่ยนเป็นโหมดมืด (Dark Mode)'}
+              aria-label={isDark ? 'เปลี่ยนเป็นโหมดสว่าง (Light Mode)' : 'เปลี่ยนเป็นโหมดมืด (Dark Mode)'}
+            >
+              {isDark ? (
+                <>
+                  <Sun className="h-4 w-4 text-amber-400" />
+                  <span>โหมดสว่าง</span>
+                </>
+              ) : (
+                <>
+                  <Moon className="h-4 w-4 text-indigo-600" />
+                  <span>โหมดมืด</span>
+                </>
+              )}
+            </button>
+
+            <div className={cn('h-6 w-px', isDark ? 'bg-slate-700/60' : 'bg-slate-300')} />
+
+            {/* User profile */}
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-tr from-blue-600 to-cyan-500 text-white shadow-[0_0_12px_rgba(8,127,255,0.4)]">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+              <div className="text-left leading-normal space-y-0.5">
+                <div className={cn('text-xs font-semibold', isDark ? 'text-white' : 'text-slate-900')}>
+                  ผู้ดูแลระบบ
+                </div>
+                <div className={cn('text-[10px]', isDark ? 'text-slate-400' : 'text-slate-500')}>
+                  Administrator
+                </div>
+              </div>
             </div>
           </div>
         </div>

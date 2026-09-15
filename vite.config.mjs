@@ -32,14 +32,14 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:8765',
+        target: 'http://127.0.0.1:8765',
         changeOrigin: true,
         configure: proxyErrorHandler,
       },
       // When navigating to /login in browser, bypass proxy to let Vite serve index.html (SPA).
       // Only proxy POST requests (legacy API calls) to the backend.
       '/login': {
-        target: 'http://localhost:8765',
+        target: 'http://127.0.0.1:8765',
         changeOrigin: true,
         bypass: (req) => {
           if (req.method === 'GET' && (req.headers.accept?.includes('text/html') || !req.headers.accept)) {
@@ -49,17 +49,17 @@ export default defineConfig({
         configure: proxyErrorHandler,
       },
       '/database': {
-        target: 'http://localhost:8765',
+        target: 'http://127.0.0.1:8765',
         changeOrigin: true,
         configure: proxyErrorHandler,
       },
       '/save': {
-        target: 'http://localhost:8765',
+        target: 'http://127.0.0.1:8765',
         changeOrigin: true,
         configure: proxyErrorHandler,
       },
       '/photos': {
-        target: 'http://localhost:8765',
+        target: 'http://127.0.0.1:8765',
         changeOrigin: true,
         configure: proxyErrorHandler,
       },

@@ -8,6 +8,7 @@ const XLSX = require("xlsx");
 const ROOT = path.join(__dirname, "../..");
 const PASSWORD_PATH = path.join(ROOT, "access-password.txt");
 const DATABASE_XLSX = path.join(ROOT, "DATABASE.xlsx");
+const AGWBS_XLSX = path.join(ROOT, "AGWBS.xlsx");
 const STORE_NAME = "survey-control-room";
 const STATIONS_KEY = "stations.json";
 const LEGACY_SURVEYS_KEY = "surveys.json";
@@ -120,26 +121,66 @@ function loadLocalSurveys() {
 async function getStations() {
   const cached = await readJson(STATIONS_KEY, null);
   if (Array.isArray(cached) && cached.length) return cached;
-  if (!fs.existsSync(DATABASE_XLSX)) return [];
 
-  const workbook = XLSX.readFile(DATABASE_XLSX, { cellDates: false });
-  const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: "" });
   const stations = [];
+  const existingNames = new Set();
 
-  for (const row of rows.slice(2)) {
-    if (!row[2]) continue;
-    stations.push({
-      id: stations.length + 1,
-      village: String(row[2]).trim(),
-      subdistrict: String(row[3] || "").trim(),
-      district: String(row[4] || "").trim(),
-      province: String(row[5] || "").trim(),
-      installation_place: String(row[9] || "").trim(),
-      equipment_place: String(row[10] || "").trim(),
-      contact_name: String(row[11] || "").trim(),
-      contact_position: String(row[12] || "").trim(),
-    });
+  if (fs.existsSync(DATABASE_XLSX)) {
+    try {
+      const workbook = XLSX.readFile(DATABASE_XLSX, { cellDates: false });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: "" });
+
+      for (const row of rows.slice(2)) {
+        if (!row[2]) continue;
+        const name = String(row[2]).trim();
+        if (!name || existingNames.has(name)) continue;
+        existingNames.add(name);
+        stations.push({
+          id: stations.length + 1,
+          village: name,
+          subdistrict: String(row[3] || "").trim(),
+          district: String(row[4] || "").trim(),
+          province: String(row[5] || "").trim(),
+          installation_place: String(row[9] || "").trim(),
+          equipment_place: String(row[10] || "").trim(),
+          contact_name: String(row[11] || "").trim(),
+          contact_position: String(row[12] || "").trim(),
+        });
+      }
+    } catch (e) {
+      console.error("Error reading DATABASE.xlsx:", e);
+    }
+  }
+
+  if (fs.existsSync(AGWBS_XLSX)) {
+    try {
+      const workbook = XLSX.readFile(AGWBS_XLSX, { cellDates: false });
+      const sheetName = workbook.SheetNames.includes("BSGW") ? "BSGW" : workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+      const startIdx = rows.length > 0 && String(rows[0][0]).includes("สถานี") ? 1 : 0;
+
+      for (const row of rows.slice(startIdx)) {
+        if (!row[0]) continue;
+        const name = String(row[0]).trim();
+        if (!name || name === "สถานี" || existingNames.has(name)) continue;
+        existingNames.add(name);
+        stations.push({
+          id: stations.length + 1,
+          village: name,
+          subdistrict: String(row[1] || "").trim(),
+          district: String(row[2] || "").trim(),
+          province: String(row[3] || "").trim(),
+          installation_place: "",
+          equipment_place: "",
+          contact_name: "",
+          contact_position: "",
+        });
+      }
+    } catch (e) {
+      console.error("Error reading AGWBS.xlsx:", e);
+    }
   }
 
   if (stations.length) await writeJson(STATIONS_KEY, stations);
@@ -200,12 +241,56 @@ async function getDashboardData() {
   const recent = surveys.slice(0, 10).map((survey) => {
     const fields = survey.fields || {};
     const station = findStation(stations, fields);
+    const stationName = station?.village || fields.station || fields.stationSelect || "ไม่ระบุสถานี";
+    const province = station?.province || fields.province || "ไม่ระบุจังหวัด";
+    const mergedFields = {
+      station: stationName,
+      subdistrict: station?.subdistrict || fields.subdistrict || "",
+      district: station?.district || fields.district || "",
+      province: province,
+      installationPlace: station?.installation_place || fields.installationPlace || "",
+      equipmentPlace: station?.equipment_place || fields.equipmentPlace || "",
+      contactName: station?.contact_name || fields.contactName || "",
+      contactPosition: station?.contact_position || fields.contactPosition || "",
+      ...fields,
+    };
+    if (!mergedFields.installationPlace && station?.installation_place) {
+      mergedFields.installationPlace = station.installation_place;
+    }
+    if (!mergedFields.equipmentPlace && station?.equipment_place) {
+      mergedFields.equipmentPlace = station.equipment_place;
+    }
+    if (!mergedFields.contactName && station?.contact_name) {
+      mergedFields.contactName = station.contact_name;
+    }
+    if (!mergedFields.contactPosition && station?.contact_position) {
+      mergedFields.contactPosition = station.contact_position;
+    }
+    if (!mergedFields.subdistrict && station?.subdistrict) {
+      mergedFields.subdistrict = station.subdistrict;
+    }
+    if (!mergedFields.district && station?.district) {
+      mergedFields.district = station.district;
+    }
+
+    const photos = (survey.photos || []).map((p, idx) => ({
+      id: idx + 1,
+      name: p.name || `photo_${idx + 1}.jpg`,
+      contentType: p.type || "image/jpeg",
+      size: p.data ? Math.round((p.data.length * 3) / 4) : 0,
+      url: p.data ? `data:${p.type || "image/jpeg"};base64,${p.data}` : `/photos/${encodeURIComponent(p.name)}`,
+      dataUrl: p.data ? `data:${p.type || "image/jpeg"};base64,${p.data}` : null,
+    }));
+    mergedFields.photos = photos;
+
     return {
       recordId: survey.recordId,
       savedAt: survey.savedAt,
-      station: station?.village || fields.station || fields.stationSelect || "ไม่ระบุสถานี",
-      province: station?.province || fields.province || "ไม่ระบุจังหวัด",
+      station: stationName,
+      province: province,
       permit: fields.permit === "on" ? "อนุญาต" : fields.permit || "ยังไม่ระบุ",
+      fields: mergedFields,
+      photos,
     };
   });
 

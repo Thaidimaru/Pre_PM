@@ -10,7 +10,7 @@
   --pred: #ff4f67;
   --ppurple: #8b5cf6;
   --pbg: #020d20;
-  --pfont: "Sarabun", "TH Sarabun New", "Noto Sans Thai", "Inter", sans-serif;
+  --pfont: "Sarabun", "Noto Sans Thai", "Inter", system-ui, sans-serif;
 }
 
 body {

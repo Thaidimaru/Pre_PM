@@ -1,23 +1,90 @@
 @import url('https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap');
 @import "tailwindcss";
 
+/* -------------------------------------------------------------------------- */
+/* Official Thai Government "TH Sarabun New" Web Font Stack                   */
+/* Primary: Local Windows/OS Font -> Local TTF Asset -> CDN -> Sarabun        */
+/* -------------------------------------------------------------------------- */
 @font-face {
   font-family: 'TH Sarabun New';
   font-style: normal;
   font-weight: 400;
-  src: local('TH Sarabun New'), local('THSarabunNew'), url('https://fonts.gstatic.com/s/sarabun/v13/dtV71XeaGjh6noVbsomY-w.woff2') format('woff2');
+  src: local('TH Sarabun New'),
+       local('THSarabunNew'),
+       url('/fonts/THSarabunNew.ttf') format('truetype'),
+       url('https://cdn.jsdelivr.net/npm/font-th-sarabun-new@1.0.0/fonts/THSarabunNew-webfont.woff') format('woff'),
+       url('https://fonts.gstatic.com/s/sarabun/v13/dtV71XeaGjh6noVbsomY-w.woff2') format('woff2');
+  font-display: swap;
 }
 
 @font-face {
   font-family: 'TH Sarabun New';
   font-style: normal;
   font-weight: 700;
-  src: local('TH Sarabun New Bold'), local('THSarabunNew-Bold'), url('https://fonts.gstatic.com/s/sarabun/v13/dtV51XeaGjh6noVbsmzq5hhV-A.woff2') format('woff2');
+  src: local('TH Sarabun New Bold'),
+       local('THSarabunNew-Bold'),
+       local('THSarabunNew Bold'),
+       url('/fonts/THSarabunNew-Bold.ttf') format('truetype'),
+       url('/fonts/THSarabunNew Bold.ttf') format('truetype'),
+       url('https://cdn.jsdelivr.net/npm/font-th-sarabun-new@1.0.0/fonts/THSarabunNew_bold-webfont.woff') format('woff'),
+       url('https://fonts.gstatic.com/s/sarabun/v13/dtV51XeaGjh6noVbsmzq5hhV-A.woff2') format('woff2');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'TH Sarabun New';
+  font-style: italic;
+  font-weight: 400;
+  src: local('TH Sarabun New Italic'),
+       local('THSarabunNew-Italic'),
+       local('THSarabunNew Italic'),
+       url('/fonts/THSarabunNew-Italic.ttf') format('truetype'),
+       url('/fonts/THSarabunNew Italic.ttf') format('truetype'),
+       url('https://cdn.jsdelivr.net/npm/font-th-sarabun-new@1.0.0/fonts/THSarabunNew_italic-webfont.woff') format('woff');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'TH Sarabun New';
+  font-style: italic;
+  font-weight: 700;
+  src: local('TH Sarabun New Bold Italic'),
+       local('THSarabunNew-BoldItalic'),
+       local('THSarabunNew BoldItalic'),
+       url('/fonts/THSarabunNew-BoldItalic.ttf') format('truetype'),
+       url('/fonts/THSarabunNew BoldItalic.ttf') format('truetype'),
+       url('https://cdn.jsdelivr.net/npm/font-th-sarabun-new@1.0.0/fonts/THSarabunNew_bolditalic-webfont.woff') format('woff');
+  font-display: swap;
+}
+
+/* Alias definition for 'THSarabunNew' without spaces */
+@font-face {
+  font-family: 'THSarabunNew';
+  font-style: normal;
+  font-weight: 400;
+  src: local('TH Sarabun New'),
+       local('THSarabunNew'),
+       url('/fonts/THSarabunNew.ttf') format('truetype'),
+       url('https://cdn.jsdelivr.net/npm/font-th-sarabun-new@1.0.0/fonts/THSarabunNew-webfont.woff') format('woff');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'THSarabunNew';
+  font-style: normal;
+  font-weight: 700;
+  src: local('TH Sarabun New Bold'),
+       local('THSarabunNew-Bold'),
+       local('THSarabunNew Bold'),
+       url('/fonts/THSarabunNew-Bold.ttf') format('truetype'),
+       url('https://cdn.jsdelivr.net/npm/font-th-sarabun-new@1.0.0/fonts/THSarabunNew_bold-webfont.woff') format('woff');
+  font-display: swap;
 }
 
 @theme {
-  --font-sans: "TH Sarabun New", "THSarabunNew", "Sarabun", sans-serif;
-  --font-thai: "TH Sarabun New", "THSarabunNew", "Sarabun", sans-serif;
+  --font-sans: "Sarabun", "Noto Sans Thai", "Inter", system-ui, sans-serif;
+  --font-thai: "Sarabun", "Noto Sans Thai", "Inter", system-ui, sans-serif;
+  --font-sarabun: "Sarabun", "Noto Sans Thai", "Inter", system-ui, sans-serif;
   --color-control-dark: #020b1b;
   --color-control-deep: #031533;
   --color-control-surface: rgba(10, 26, 48, 0.78);
@@ -33,11 +100,11 @@
 
 :root {
   color-scheme: dark;
-  --font-gui: "TH Sarabun New", "THSarabunNew", "Sarabun", sans-serif;
+  --font-gui: "Sarabun", "Noto Sans Thai", "Inter", system-ui, sans-serif;
 }
 
 html {
-  font-family: "TH Sarabun New", "THSarabunNew", "Sarabun", sans-serif;
+  font-family: var(--font-gui);
   font-size: 16px;
   font-size-adjust: from-font;
   line-height: 1.5;
@@ -54,11 +121,12 @@ html {
 
 body {
   margin: 0;
-  font-family: "TH Sarabun New", "THSarabunNew", "Sarabun", sans-serif;
+  font-family: var(--font-gui);
+  font-size: 1.125rem;
   background-color: #020b1b;
   color: #edf6ff;
   min-height: 100vh;
-  line-height: 1.5;
+  line-height: 1.6;
   letter-spacing: normal;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -67,14 +135,13 @@ body {
 /* Visually stable mixed fonts fallback */
 @supports not (font-size-adjust: from-font) {
   html, body {
-    line-height: 1.55;
+    line-height: 1.625;
   }
 }
 
 /* Headings base line-height, normal tracking and balanced wrapping */
 h1, h2, h3, h4, h5, h6 {
-  font-family: "TH Sarabun New", "THSarabunNew", "Sarabun", sans-serif;
-  line-height: 1.3;
+  line-height: 1.35;
   letter-spacing: normal;
   text-wrap: balance;
 }
@@ -83,13 +150,20 @@ h1, h2, h3, h4, h5, h6 {
 :lang(th),
 [lang="th"],
 .font-thai {
-  font-family: "TH Sarabun New", "THSarabunNew", "Sarabun", sans-serif;
+  font-family: var(--font-thai);
   letter-spacing: normal;
+}
+
+/* Dedicated Sarabun font stack for official A4 reports */
+.font-sarabun,
+.a4-sheet,
+#printable-report-area {
+  font-family: "Sarabun", "Noto Sans Thai", "Inter", system-ui, sans-serif !important;
 }
 
 /* Inputs, textareas, buttons font consistency */
 input, textarea, select, button {
-  font-family: "TH Sarabun New", "THSarabunNew", "Sarabun", sans-serif !important;
+  font-family: inherit;
   letter-spacing: normal;
 }
 
@@ -168,41 +242,309 @@ input::placeholder, textarea::placeholder {
   animation: ping-slow 3s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Light Mode Theme Rules & Token Overrides                                  */
+/* -------------------------------------------------------------------------- */
+.light {
+  color-scheme: light;
+}
+
+.light body {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+.light .glass-panel {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.92)) !important;
+  border: 1px solid rgba(203, 213, 225, 0.85) !important;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.06), 0 4px 6px -4px rgba(0, 0, 0, 0.03) !important;
+}
+
+.light .glass-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #0f172a;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+}
+
+.light .glass-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.08);
+}
+
+/* Light mode tinted icon and badge backgrounds */
+.light .bg-blue-500\/20,
+.light .bg-blue-500\/30 {
+  background-color: #eff6ff !important;
+}
+
+.light .bg-cyan-500\/20,
+.light .bg-cyan-500\/15 {
+  background-color: #f0f9ff !important;
+}
+
+.light .bg-emerald-500\/20,
+.light .bg-emerald-500\/15 {
+  background-color: #ecfdf5 !important;
+}
+
+.light .bg-rose-500\/20,
+.light .bg-rose-500\/15 {
+  background-color: #fff1f2 !important;
+}
+
+.light .bg-purple-500\/20,
+.light .bg-purple-500\/15 {
+  background-color: #faf5ff !important;
+}
+
+/* Light mode ShinyText kinetic text effect */
+.light .animate-shine {
+  background-image: linear-gradient(110deg, #0f172a 30%, #0284c7 50%, #0f172a 70%) !important;
+}
+
+/* Light mode form controls */
+.light input:not([type="checkbox"]):not([type="radio"]),
+.light textarea,
+.light select {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+.light input::placeholder,
+.light textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+.light input:focus,
+.light textarea:focus,
+.light select:focus {
+  border-color: #0284c7 !important;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.18) !important;
+}
+
+/* Radix dialog & popover surfaces in Light Mode */
+.light [data-radix-dialog-content],
+.light [role="dialog"] {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.18) !important;
+}
+
+.light [data-radix-select-trigger] {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+.light [data-radix-select-content] {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05) !important;
+}
+
+.light [data-radix-select-item] {
+  color: #334155 !important;
+}
+
+.light [data-radix-select-item]:hover,
+.light [data-radix-select-item][data-highlighted] {
+  background-color: #f0f9ff !important;
+  color: #0284c7 !important;
+}
+
+/* Light mode table & card dividers */
+.light .border-slate-800,
+.light .border-slate-800\/80,
+.light .border-slate-800\/50,
+.light .border-slate-800\/40,
+.light .divide-slate-800\/60,
+.light .divide-slate-800\/50,
+.light .divide-slate-800\/40 {
+  border-color: #e2e8f0 !important;
+}
+
+.light tr:hover {
+  background-color: #f8fafc !important;
+}
+
+/* Light mode text colors & headings */
+.light h1, .light h2, .light h3, .light h4, .light h5, .light h6 {
+  color: #0f172a;
+}
+
+.light label {
+  color: #334155;
+}
+
+.light .text-slate-100 {
+  color: #0f172a !important;
+}
+
+.light .text-slate-200 {
+  color: #1e293b !important;
+}
+
+.light .text-slate-300 {
+  color: #334155 !important;
+}
+
+.light .text-slate-400 {
+  color: #64748b !important;
+}
+
+/* Light mode cards, sections & dropzone surfaces */
+.light .bg-slate-950\/60,
+.light .bg-slate-950\/40,
+.light .bg-slate-950\/30 {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+.light .bg-slate-900\/60 {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+.light .border-dashed.border-blue-500\/30 {
+  border-color: #93c5fd !important;
+  background-color: #f0f9ff !important;
+}
+
+.light .border-dashed.border-blue-500\/30:hover {
+  border-color: #0284c7 !important;
+  background-color: #e0f2fe !important;
+}
+
+/* Light mode scrollbars */
+.light ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+.light ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+.light ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Explicit protection: Printable A4 sheet is strictly paper white in both modes */
+.a4-sheet,
+#printable-report-area {
+  color-scheme: light !important;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
 /* Print CSS Rules for A4 TH Sarabun New Report Export */
 @media print {
   @page {
     size: A4 portrait;
-    margin: 8mm 10mm;
+    margin: 0;
   }
   
   html, body {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
     background: #ffffff !important;
     color: #000000 !important;
-    font-family: 'TH Sarabun New', 'THSarabunNew', 'Sarabun', sans-serif !important;
-    margin: 0 !important;
-    padding: 0 !important;
+    font-family: "Sarabun", "Noto Sans Thai", "Inter", system-ui, sans-serif !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    overflow: visible !important;
   }
 
-  /* Hide app navigation, modals overlays, background UI */
-  body > *:not(#root) {
+  /*
+   * Zero-Offset Print Strategy:
+   * When SurveyReportModal is open, completely remove #root (Navbar, Sidebar, Dashboard)
+   * from the document flow with display: none so they occupy ZERO height and zero pages.
+   */
+  body.survey-modal-open #root,
+  body:has(#survey-report-modal-portal) #root,
+  body:has(#printable-report-area) #root,
+  .no-print,
+  .print\:hidden {
     display: none !important;
   }
 
-  header, aside, .no-print, .no-print-backdrop {
-    display: none !important;
-  }
-
-  #printable-report-area {
+  /* Unconstrain and reset modal portal wrapper for native pagination */
+  #survey-report-modal-portal {
     position: static !important;
+    display: block !important;
     width: 100% !important;
     max-width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border: none !important;
+    overflow: visible !important;
+  }
+
+  #survey-report-modal-portal > div {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border: none !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* Printable Report Area starts cleanly at the top of Page 1 */
+  #printable-report-area {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+
+  .a4-sheet {
+    box-sizing: border-box !important;
+    width: 210mm !important;
+    height: 297mm !important;
+    min-height: 297mm !important;
+    max-height: 297mm !important;
+    margin: 0 auto !important;
+    padding: 12mm 15mm 12mm 15mm !important;
     box-shadow: none !important;
     border: none !important;
     background: #ffffff !important;
     color: #000000 !important;
-    font-family: 'TH Sarabun New', 'THSarabunNew', 'Sarabun', sans-serif !important;
+    font-family: "Sarabun", "Noto Sans Thai", "Inter", system-ui, sans-serif !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    overflow: hidden !important;
+    position: relative !important;
+  }
+
+  .a4-sheet:last-child {
+    page-break-after: auto !important;
+    break-after: auto !important;
   }
 }
+
 
