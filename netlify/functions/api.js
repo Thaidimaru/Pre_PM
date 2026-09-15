@@ -2,6 +2,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
+const os = require("node:os");
 const { getStore } = require("@netlify/blobs");
 const XLSX = require("xlsx");
 
@@ -13,6 +14,7 @@ const STORE_NAME = "survey-control-room";
 const STATIONS_KEY = "stations.json";
 const LEGACY_SURVEYS_KEY = "surveys.json";
 const SURVEY_PREFIX = "survey/";
+const TMP_SURVEY_DIR = path.join(os.tmpdir(), "nbtc-pre-pm-surveys");
 const MAX_PHOTO_DATA_CHARS = 5600000;
 const TOKEN_TTL_MS = 8 * 60 * 60 * 1000;
 
@@ -77,12 +79,27 @@ async function readJson(key, fallback = null) {
     const store = getBlobStore();
     if (store) {
       const value = await store.get(key, { type: "json" });
-      return value == null ? fallback : value;
+      if (value != null) return value;
     }
   } catch {
-    // Fall back to memory store
+    // Fall back to memory or disk
   }
-  return memoryStore.has(key) ? memoryStore.get(key) : fallback;
+
+  if (memoryStore.has(key)) {
+    return memoryStore.get(key);
+  }
+
+  try {
+    const safeFilename = `${encodeURIComponent(key).replace(/[*"\/\\<>:|?]/g, "_")}.json`;
+    const filePath = path.join(TMP_SURVEY_DIR, safeFilename);
+    if (fs.existsSync(filePath)) {
+      const val = JSON.parse(fs.readFileSync(filePath, "utf8"));
+      memoryStore.set(key, val);
+      return val;
+    }
+  } catch {}
+
+  return fallback;
 }
 
 async function writeJson(key, value) {
@@ -90,12 +107,22 @@ async function writeJson(key, value) {
     const store = getBlobStore();
     if (store) {
       await store.setJSON(key, value);
-      return;
     }
   } catch {
-    // Fall back to memory store
+    // Fall back to memory and disk
   }
+
   memoryStore.set(key, value);
+
+  try {
+    if (!fs.existsSync(TMP_SURVEY_DIR)) {
+      fs.mkdirSync(TMP_SURVEY_DIR, { recursive: true });
+    }
+    const safeFilename = `${encodeURIComponent(key).replace(/[*"\/\\<>:|?]/g, "_")}.json`;
+    fs.writeFileSync(path.join(TMP_SURVEY_DIR, safeFilename), JSON.stringify(value), "utf8");
+  } catch (err) {
+    console.warn("Could not write to TMP_SURVEY_DIR:", err);
+  }
 }
 
 function loadLocalSurveys() {
@@ -189,6 +216,9 @@ async function getStations() {
 
 async function getAllSurveys() {
   const surveys = [];
+  const seenIds = new Set();
+
+  // 1. Netlify Blobs
   try {
     const store = getBlobStore();
     if (store) {
@@ -198,22 +228,67 @@ async function getAllSurveys() {
         const key = typeof item === "string" ? item : item?.key;
         return key ? await readJson(key, null) : null;
       }))).filter(Boolean);
-      surveys.push(...blobSurveys);
+
+      for (const s of blobSurveys) {
+        if (s && s.recordId && !seenIds.has(s.recordId)) {
+          seenIds.add(s.recordId);
+          surveys.push(s);
+        }
+      }
 
       const legacy = await readJson(LEGACY_SURVEYS_KEY, []);
-      if (Array.isArray(legacy)) surveys.push(...legacy);
+      if (Array.isArray(legacy)) {
+        for (const s of legacy) {
+          if (s && s.recordId && !seenIds.has(s.recordId)) {
+            seenIds.add(s.recordId);
+            surveys.push(s);
+          }
+        }
+      }
     }
   } catch {}
 
+  // 2. Memory Store
   for (const [key, val] of memoryStore.entries()) {
     if (key.startsWith(SURVEY_PREFIX) && val && typeof val === "object") {
-      surveys.push(val);
+      const recordId = val.recordId || key.replace(SURVEY_PREFIX, "").replace(/\.json$/, "");
+      if (!seenIds.has(recordId)) {
+        seenIds.add(recordId);
+        surveys.push(val);
+      }
     }
   }
 
-  if (surveys.length === 0) {
-    surveys.push(...loadLocalSurveys());
-  }
+  // 3. TMP_SURVEY_DIR Files
+  try {
+    if (fs.existsSync(TMP_SURVEY_DIR)) {
+      const files = fs.readdirSync(TMP_SURVEY_DIR).filter((f) => f.endsWith(".json"));
+      for (const file of files) {
+        try {
+          const val = JSON.parse(fs.readFileSync(path.join(TMP_SURVEY_DIR, file), "utf8"));
+          if (val && typeof val === "object") {
+            const recordId = val.recordId || file.replace(/\.json$/, "");
+            if (!seenIds.has(recordId)) {
+              seenIds.add(recordId);
+              surveys.push(val);
+              memoryStore.set(`${SURVEY_PREFIX}${recordId}.json`, val);
+            }
+          }
+        } catch {}
+      }
+    }
+  } catch {}
+
+  // 4. Local static surveys in ROOT (survey-*.json)
+  try {
+    const rootSurveys = loadLocalSurveys();
+    for (const s of rootSurveys) {
+      if (s && s.recordId && !seenIds.has(s.recordId)) {
+        seenIds.add(s.recordId);
+        surveys.push(s);
+      }
+    }
+  } catch {}
 
   return surveys.sort((a, b) => String(b.savedAt || "").localeCompare(String(a.savedAt || "")));
 }

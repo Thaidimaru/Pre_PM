@@ -111,7 +111,7 @@ export function App() {
             {currentPage === 'dashboard' ? (
               <DashboardView onNavigate={navigateTo} />
             ) : (
-              <FieldVisitView />
+              <FieldVisitView onNavigate={navigateTo} />
             )}
           </div>
         </div>

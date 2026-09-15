@@ -33,11 +33,11 @@ import {
 } from '@/components/ui/dialog';
 import { fetchStations, submitSurvey } from '@/lib/api';
 import { SurveyReportModal } from '@/components/export/SurveyReportModal';
-import { Printer, FileText } from 'lucide-react';
+import { Printer, FileText, LayoutDashboard } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
 import { cn } from '@/lib/utils';
 
-export function FieldVisitView() {
+export function FieldVisitView({ onNavigate }) {
   const { isDark } = useTheme();
   const [stations, setStations] = useState([]);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -797,20 +797,39 @@ export function FieldVisitView() {
               <span>{statusMessage.text}</span>
             </div>
 
-            {statusMessage.type === 'success' && lastSavedReport && (
-              <button
-                type="button"
-                onClick={() => setShowReportModal(true)}
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition-all cursor-pointer shadow-xs self-start sm:self-auto shrink-0',
-                  isDark
-                    ? 'border-emerald-500/40 bg-emerald-900/60 text-emerald-200 hover:bg-emerald-800 hover:text-white'
-                    : 'border-emerald-300 bg-emerald-600 text-white hover:bg-emerald-700'
+            {statusMessage.type === 'success' && (
+              <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto shrink-0">
+                {onNavigate && (
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('dashboard')}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition-all cursor-pointer shadow-xs',
+                      isDark
+                        ? 'border-cyan-500/40 bg-cyan-950/70 text-cyan-200 hover:bg-cyan-900 hover:text-white'
+                        : 'border-sky-300 bg-sky-600 text-white hover:bg-sky-700'
+                    )}
+                  >
+                    <LayoutDashboard className="h-3.5 w-3.5" />
+                    <span>ไปยังหน้า Dashboard</span>
+                  </button>
                 )}
-              >
-                <Printer className="h-3.5 w-3.5" />
-                <span>พิมพ์ / Export PDF</span>
-              </button>
+                {lastSavedReport && (
+                  <button
+                    type="button"
+                    onClick={() => setShowReportModal(true)}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition-all cursor-pointer shadow-xs',
+                      isDark
+                        ? 'border-emerald-500/40 bg-emerald-900/60 text-emerald-200 hover:bg-emerald-800 hover:text-white'
+                        : 'border-emerald-300 bg-emerald-600 text-white hover:bg-emerald-700'
+                    )}
+                  >
+                    <Printer className="h-3.5 w-3.5" />
+                    <span>พิมพ์ / Export PDF</span>
+                  </button>
+                )}
+              </div>
             )}
           </div>
         )}
