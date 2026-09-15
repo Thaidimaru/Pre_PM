@@ -56,12 +56,9 @@ export function FieldVisitView({ onNavigate }) {
   const [activePreviewPhoto, setActivePreviewPhoto] = useState(null);
   const fileInputRef = useRef(null);
 
-  const token = useMemo(() => sessionStorage.getItem('surveyToken') || '', []);
-
-  // Fetch stations for auto-completion
+  // Fetch stations for auto-completion immediately on mount
   useEffect(() => {
-    if (!token) return;
-    fetchStations(token)
+    fetchStations()
       .then((data) => {
         setStations(
           (data.stations || []).map((s) => ({
@@ -79,7 +76,7 @@ export function FieldVisitView({ onNavigate }) {
       .catch((err) => {
         console.error('Failed to fetch station directory:', err);
       });
-  }, [token]);
+  }, []);
 
   const updateField = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -148,7 +145,7 @@ export function FieldVisitView({ onNavigate }) {
         data: p.base64Data
       }));
 
-      const result = await submitSurvey(token, formData, photosPayload);
+      const result = await submitSurvey(formData, photosPayload);
 
       const reportPhotos = selectedPhotos.map((p, idx) => ({
         id: idx + 1,

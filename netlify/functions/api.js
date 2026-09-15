@@ -462,19 +462,11 @@ exports.handler = async (event) => {
     const route = (event.path || "").split("/").filter(Boolean).pop() || "";
 
     if (event.httpMethod === "POST" && route === "login") {
-      const payload = JSON.parse(event.body || "{}");
-      if (payload.password !== readPassword()) {
-        return json(401, { error: "invalid_password", message: "รหัสผ่านไม่ถูกต้อง" });
-      }
-      return json(200, { token: issueToken() });
+      return json(200, { token: "public", ok: true });
     }
 
     if (event.httpMethod === "GET" && route === "dashboard") {
       return json(200, await getDashboardData());
-    }
-
-    if (!isAuthorized(event)) {
-      return json(401, { error: "unauthorized", message: "กรุณาเข้าสู่ระบบก่อนใช้งาน" });
     }
 
     if (event.httpMethod === "GET" && route === "database") {

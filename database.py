@@ -489,10 +489,6 @@ class SurveyRequestHandler(BaseHTTPRequestHandler):
 
         # 4. API: Station Master Database
         if parsed_path in ("/database", "/api/database"):
-            auth_header = self.headers.get("Authorization", "")
-            if not auth_service.is_authorized(auth_header):
-                self.send_json_response(401, {"error": "Unauthorized"})
-                return
             stations = DatabaseService.get_stations()
             self.send_json_response(200, {"stations": stations})
             return
@@ -576,20 +572,11 @@ class SurveyRequestHandler(BaseHTTPRequestHandler):
 
             # 1. Login Endpoint
             if path in ("/login", "/api/login"):
-                password = payload.get("password", "")
-                if not auth_service.verify_password(password):
-                    self.send_json_response(401, {"error": "invalid password"})
-                    return
-                token = auth_service.create_token()
-                self.send_json_response(200, {"token": token})
+                self.send_json_response(200, {"token": "public", "ok": True})
                 return
 
             # 2. Save Survey Endpoint
             if path in ("/save", "/api/save"):
-                auth_header = self.headers.get("Authorization", "")
-                if not auth_service.is_authorized(auth_header):
-                    self.send_json_response(401, {"error": "Unauthorized"})
-                    return
 
                 fields = payload.get("fields", {})
                 photos = payload.get("photos", [])

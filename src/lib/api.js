@@ -154,15 +154,13 @@ export async function fetchDashboardData() {
   const merged = mergeDashboardWithLocal(serverData, localSurveys);
 
   // Background sync: If server has no surveys but client has local surveys, attempt to re-sync them
-  const token = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('surveyToken') : '';
-  if (token && serverData && serverData.stats?.surveys === 0 && localSurveys.length > 0) {
+  if (serverData && serverData.stats?.surveys === 0 && localSurveys.length > 0) {
     Promise.all(
       localSurveys.slice(0, 5).map((s) => {
         return fetch('/api/save', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             fields: s.fields || {},
@@ -180,15 +178,14 @@ export async function fetchDashboardData() {
   return merged;
 }
 
-export async function fetchStations(token) {
-  let res = await fetch('/api/database', {
-    headers: { Authorization: `Bearer ${token}` },
-  }).catch(() => null);
+export async function fetchStations(token = '') {
+  const headers = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  let res = await fetch('/api/database', { headers }).catch(() => null);
 
   if (!res || res.status === 404) {
-    res = await fetch('/database', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    res = await fetch('/database', { headers });
   }
 
   if (!res.ok) {
@@ -197,68 +194,42 @@ export async function fetchStations(token) {
   return res.json();
 }
 
-export async function loginUser(password) {
-  let res;
-  try {
-    // Try modern /api/login endpoint first
-    res = await fetch('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
-    });
-    // Fall back to /login if 404
-    if (res.status === 404) {
-      res = await fetch('/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
-      });
-    }
-  } catch {
-    try {
-      res = await fetch('/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
-      });
-    } catch {
-      throw new Error('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่อเครือข่าย');
-    }
-  }
-
-  if (res.status === 503) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.message || 'เซิร์ฟเวอร์ Backend ยังไม่ได้เริ่มต้น');
-  }
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.message || data.error || 'รหัสผ่านไม่ถูกต้อง');
-  }
-  return res.json();
+export async function loginUser(password = '') {
+  return { token: 'public', ok: true };
 }
 
-export async function submitSurvey(token, fields, photos) {
+export async function submitSurvey(arg1, arg2, arg3) {
+  // Support both submitSurvey(fields, photos) and submitSurvey(token, fields, photos)
+  let token = '';
+  let fields = {};
+  let photos = [];
+
+  if (typeof arg1 === 'string') {
+    token = arg1;
+    fields = arg2 || {};
+    photos = arg3 || [];
+  } else {
+    fields = arg1 || {};
+    photos = arg2 || [];
+  }
+
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
   let serverResult = null;
   let serverError = null;
 
   try {
     let res = await fetch('/api/save', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
+      headers,
       body: JSON.stringify({ fields, photos }),
     }).catch(() => null);
 
     if (!res || res.status === 404) {
       res = await fetch('/save', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
         body: JSON.stringify({ fields, photos }),
       }).catch(() => null);
     }

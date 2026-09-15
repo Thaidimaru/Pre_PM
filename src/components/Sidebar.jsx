@@ -1,11 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, ClipboardList, LogOut, Radio, Activity, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, Radio, Activity, Sun, Moon } from 'lucide-react';
 import { APP_VERSION } from '@/version';
 import { useTheme } from '@/context/ThemeContext';
 import { cn } from '@/lib/utils';
 
-export function Sidebar({ currentPage, onNavigate, onLogout, mobileOpen, onClose }) {
+export function Sidebar({ currentPage, onNavigate, mobileOpen, onClose }) {
   const { isDark, toggleTheme } = useTheme();
   const navItems = [
     {
@@ -146,26 +146,6 @@ export function Sidebar({ currentPage, onNavigate, onLogout, mobileOpen, onClose
                   {isDark ? 'สลับเป็น Light Mode' : 'สลับเป็น Dark Mode'}
                 </span>
               </div>
-            </button>
-
-            {/* Logout button */}
-            <button
-              type="button"
-              onClick={() => {
-                onClose?.();
-                onLogout();
-              }}
-              className={cn(
-                'group flex w-full items-center gap-3 rounded-xl border border-rose-500/20 px-3.5 py-2.5 text-left transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 cursor-pointer',
-                isDark
-                  ? 'text-rose-300 hover:bg-rose-500/10 hover:border-rose-500/40'
-                  : 'text-rose-600 hover:bg-rose-50 hover:border-rose-300'
-              )}
-            >
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-500/20 text-rose-500 group-hover:text-rose-600">
-                <LogOut className="h-4 w-4" />
-              </div>
-              <span className="text-sm font-semibold">ออกจากระบบ</span>
             </button>
           </div>
         </div>
