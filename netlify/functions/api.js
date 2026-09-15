@@ -66,6 +66,52 @@ function isAuthorized(event) {
 
 const memoryStore = new Map();
 
+async function kvGet(key) {
+  if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) return null;
+  try {
+    const res = await fetch(`${process.env.KV_REST_API_URL}/get/${encodeURIComponent(key)}`, {
+      headers: { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` },
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (!json.result) return null;
+    return typeof json.result === "string" ? JSON.parse(json.result) : json.result;
+  } catch {
+    return null;
+  }
+}
+
+async function kvSet(key, value) {
+  if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) return false;
+  try {
+    const res = await fetch(`${process.env.KV_REST_API_URL}/set/${encodeURIComponent(key)}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(typeof value === "string" ? value : JSON.stringify(value)),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function kvKeys(pattern) {
+  if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) return [];
+  try {
+    const res = await fetch(`${process.env.KV_REST_API_URL}/keys/${encodeURIComponent(pattern)}`, {
+      headers: { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` },
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return Array.isArray(json.result) ? json.result : [];
+  } catch {
+    return [];
+  }
+}
+
 function getBlobStore() {
   try {
     return getStore(STORE_NAME);
@@ -75,6 +121,14 @@ function getBlobStore() {
 }
 
 async function readJson(key, fallback = null) {
+  // 1. Check Vercel KV if connected
+  const kvVal = await kvGet(key);
+  if (kvVal != null) {
+    memoryStore.set(key, kvVal);
+    return kvVal;
+  }
+
+  // 2. Check Netlify Blobs if connected
   try {
     const store = getBlobStore();
     if (store) {
@@ -82,13 +136,15 @@ async function readJson(key, fallback = null) {
       if (value != null) return value;
     }
   } catch {
-    // Fall back to memory or disk
+    // Fall back
   }
 
+  // 3. Check memory store
   if (memoryStore.has(key)) {
     return memoryStore.get(key);
   }
 
+  // 4. Check TMP_SURVEY_DIR on disk
   try {
     const safeFilename = `${encodeURIComponent(key).replace(/[*"\/\\<>:|?]/g, "_")}.json`;
     const filePath = path.join(TMP_SURVEY_DIR, safeFilename);
@@ -103,17 +159,23 @@ async function readJson(key, fallback = null) {
 }
 
 async function writeJson(key, value) {
+  // 1. Persist to Vercel KV if available
+  await kvSet(key, value);
+
+  // 2. Persist to Netlify Blobs if available
   try {
     const store = getBlobStore();
     if (store) {
       await store.setJSON(key, value);
     }
   } catch {
-    // Fall back to memory and disk
+    // Fall back
   }
 
+  // 3. Persist to memory store
   memoryStore.set(key, value);
 
+  // 4. Persist to TMP_SURVEY_DIR on disk
   try {
     if (!fs.existsSync(TMP_SURVEY_DIR)) {
       fs.mkdirSync(TMP_SURVEY_DIR, { recursive: true });
@@ -218,7 +280,22 @@ async function getAllSurveys() {
   const surveys = [];
   const seenIds = new Set();
 
-  // 1. Netlify Blobs
+  // 1. Vercel KV Store
+  try {
+    const kvSurveyKeys = await kvKeys(`${SURVEY_PREFIX}*`);
+    if (Array.isArray(kvSurveyKeys) && kvSurveyKeys.length > 0) {
+      const kvSurveys = (await Promise.all(kvSurveyKeys.map((k) => kvGet(k)))).filter(Boolean);
+      for (const s of kvSurveys) {
+        if (s && s.recordId && !seenIds.has(s.recordId)) {
+          seenIds.add(s.recordId);
+          surveys.push(s);
+          memoryStore.set(`${SURVEY_PREFIX}${s.recordId}.json`, s);
+        }
+      }
+    }
+  } catch {}
+
+  // 2. Netlify Blobs
   try {
     const store = getBlobStore();
     if (store) {
