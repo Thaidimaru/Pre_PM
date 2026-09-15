@@ -171,7 +171,7 @@ export async function fetchDashboardData() {
           }),
         }).catch(() => null);
       })
-    ).catch(() => {});
+    ).catch(() => { });
   }
 
   return merged;
