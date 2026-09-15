@@ -53,7 +53,7 @@ export function LoginView({ onLoginSuccess }) {
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold tracking-[0.18em] text-cyan-400">
-                  SURVEY CONTROL ROOM
+                  Pre Preventive Maintenance
                 </span>
                 <span className="rounded bg-blue-500/20 px-1.5 py-0.2 text-[10px] font-semibold text-blue-300">
                   v{APP_VERSION}

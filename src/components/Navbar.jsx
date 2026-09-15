@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, ShieldCheck, Radio } from 'lucide-react';
+import { Calendar, Clock, ShieldCheck, Menu, X } from 'lucide-react';
 import { APP_VERSION } from '@/version';
 import nbtcLogo from '@/assets/images/nbtc-logo-dashboard.png';
 
-export function Navbar() {
+export function Navbar({ onToggleMobileMenu, isMobileMenuOpen }) {
   const [timeStr, setTimeStr] = useState(() =>
     new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   );
@@ -25,9 +25,19 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-40 h-[88px] w-full border-b border-[rgba(28,139,255,0.45)] bg-[linear-gradient(90deg,#021735,#031b40)] shadow-[0_8px_30px_rgba(0,0,0,0.32)] backdrop-blur-xl">
-      <div className="mx-auto flex h-full items-center justify-between px-6 lg:px-10">
-        {/* Brand */}
-        <div className="flex items-center gap-4">
+      <div className="mx-auto flex h-full items-center justify-between px-4 sm:px-6 lg:px-10">
+        {/* Brand & Mobile Menu Toggle */}
+        <div className="flex items-center gap-3 sm:gap-4">
+          {/* Mobile hamburger toggle (visible on screens < lg) */}
+          <button
+            type="button"
+            onClick={onToggleMobileMenu}
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-blue-500/30 bg-blue-950/40 text-slate-200 hover:bg-blue-900/40 hover:text-white transition-colors lg:hidden focus:outline-none focus:ring-2 focus:ring-blue-500"
+            aria-label={isMobileMenuOpen ? 'ปิดเมนู' : 'เปิดเมนู'}
+          >
+            {isMobileMenuOpen ? <X className="h-5 w-5 text-cyan-400" /> : <Menu className="h-5 w-5" />}
+          </button>
+
           <img
             src={nbtcLogo}
             alt="NBTC Logo"
@@ -36,19 +46,19 @@ export function Navbar() {
                 e.currentTarget.src = '/assets/images/nbtc-logo-dashboard.png';
               }
             }}
-            className="h-14 w-auto object-contain drop-shadow-[0_0_12px_rgba(8,127,255,0.3)]"
+            className="h-10 sm:h-12 lg:h-14 w-auto object-contain drop-shadow-[0_0_12px_rgba(8,127,255,0.3)]"
           />
           <div className="flex flex-col">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold tracking-[0.2em] text-cyan-400">
-                SURVEY CONTROL ROOM
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="text-[10px] sm:text-xs font-bold tracking-[0.15em] sm:tracking-[0.2em] text-cyan-400">
+                Pre Preventive Maintenance
               </span>
-              <span className="rounded bg-blue-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-blue-300 border border-blue-500/30">
+              <span className="rounded bg-blue-500/20 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-semibold text-blue-300 border border-blue-500/30">
                 v{APP_VERSION}
               </span>
             </div>
-            <span className="text-lg font-extrabold tracking-wide text-white lg:text-xl">
-              NBTC MICROWAVE
+            <span className="text-base sm:text-lg font-extrabold tracking-wide text-white lg:text-xl">
+              NBTC
             </span>
           </div>
         </div>

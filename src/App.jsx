@@ -15,7 +15,10 @@ export function App() {
     return 'field';
   });
 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   const navigateTo = (page) => {
+    setMobileMenuOpen(false);
     setCurrentPage(page);
     const targetUrl = page === 'dashboard' ? '/dashboard' : page === 'login' ? '/login' : '/';
     if (window.location.pathname !== targetUrl) {
@@ -26,6 +29,7 @@ export function App() {
   const handleLogout = () => {
     sessionStorage.removeItem('surveyToken');
     setToken('');
+    setMobileMenuOpen(false);
     setCurrentPage('login');
     window.history.pushState({}, '', '/login');
   };
@@ -38,6 +42,7 @@ export function App() {
   // Sync state with browser back/forward navigation
   useEffect(() => {
     const handlePopState = () => {
+      setMobileMenuOpen(false);
       const path = window.location.pathname;
       if (path === '/dashboard') setCurrentPage('dashboard');
       else if (path === '/login') setCurrentPage('login');
@@ -68,7 +73,10 @@ export function App() {
       <Spotlight />
 
       {/* Top Fixed Navbar */}
-      <Navbar />
+      <Navbar
+        onToggleMobileMenu={() => setMobileMenuOpen((prev) => !prev)}
+        isMobileMenuOpen={mobileMenuOpen}
+      />
 
       <div className="flex">
         {/* Left Fixed Sidebar */}
@@ -76,11 +84,13 @@ export function App() {
           currentPage={currentPage === 'login' ? 'dashboard' : currentPage}
           onNavigate={navigateTo}
           onLogout={handleLogout}
+          mobileOpen={mobileMenuOpen}
+          onClose={() => setMobileMenuOpen(false)}
         />
 
         {/* Dynamic Page Content */}
-        <div className="flex-1 pl-0 lg:pl-64 transition-all duration-300">
-          <div className="min-h-[calc(100vh-88px)] py-6">
+        <div className="flex-1 min-w-0 pl-0 lg:pl-64 transition-all duration-300">
+          <div className="min-h-[calc(100vh-88px)] py-4 sm:py-6">
             {currentPage === 'dashboard' ? (
               <DashboardView onNavigate={navigateTo} />
             ) : (
